@@ -16,6 +16,7 @@ class Camera(SingletonConfigurable):
     fps = traitlets.Integer(default_value=21).tag(config=True)
     capture_width = traitlets.Integer(default_value=3280).tag(config=True)
     capture_height = traitlets.Integer(default_value=2464).tag(config=True)
+    flipmode = traitlets.Integer(default_value=2).tag(config=True) # Frank: my robot has an upside-down camera to make the cable neater
 
     def __init__(self, *args, **kwargs):
         self.value = np.empty((self.height, self.width, 3), dtype=np.uint8)
@@ -47,8 +48,8 @@ class Camera(SingletonConfigurable):
                 break
                 
     def _gst_str(self):
-        return 'nvarguscamerasrc ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! videoconvert ! appsink' % (
-                self.capture_width, self.capture_height, self.fps, self.width, self.height)
+        return 'nvarguscamerasrc ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv flip-method=%d ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! videoconvert ! appsink' % (
+                self.capture_width, self.capture_height, self.fps, self.flipmode, self.width, self.height)
     
     def start(self):
         if not self.cap.isOpened():
