@@ -13,7 +13,7 @@ def platform_notebooks_dir():
         return os.path.join(notebooks_dir(), 'robot')
     else:
         return os.path.join(notebooks_dir(), 'host')
-    
+
 
 def platform_model_str():
     with open('/proc/device-tree/model', 'r') as f:
@@ -36,3 +36,6 @@ def get_ip_address(interface):
 
 def get_network_interface_state(interface):
     return subprocess.check_output('cat /sys/class/net/%s/operstate' % interface, shell=True).decode('ascii')[:-1]
+
+def get_wifi_ssid():
+    return subprocess.check_output('iwgetid -r', shell=True).decode('ascii')[:-1]

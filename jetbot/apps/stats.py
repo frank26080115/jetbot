@@ -25,7 +25,7 @@ import Adafruit_SSD1306
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
-from jetbot.utils.utils import get_ip_address
+from jetbot.utils.utils import *
 
 import subprocess
 
@@ -87,18 +87,23 @@ while True:
     Temperature = subprocess.check_output(cmd, shell = True )
     Temperature = str(Temperature.decode('utf-8'))
 
-
     linecnt = 0
 
     ethIp = get_ip_address('eth0')
     wifiIp = get_ip_address('wlan0')
+    wifiSsid = None
+    if wifiIp != None:
+        wifiSsid = get_wifi_ssid()
 
     # Draw text
     if ethIp != None:
         draw.text((x, top + (lineheight * linecnt)),   "ETH:  " + str(ethIp),  font=font, fill=255)
         linecnt += 1
     if wifiIp != None:
-        draw.text((x, top + (lineheight * linecnt)),   "WIFI: " + str(wifiIp), font=font, fill=255)
+        if (disploop % 4) < 2 and wifiSsid != None:
+            draw.text((x, top + (lineheight * linecnt)),   "WIFI: " + str(wifiSsid), font=font, fill=255)
+        else:
+            draw.text((x, top + (lineheight * linecnt)),   "WIFI: " + str(wifiIp), font=font, fill=255)
         linecnt += 1
 
     if (disploop % 4) < 2:
