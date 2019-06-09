@@ -75,11 +75,18 @@ while True:
     cmd = "top -bn1 | grep load | awk '{printf \"%.0f\", $(NF-2)}'"
     CPU = subprocess.check_output(cmd, shell = True )
     CPU = str(CPU.decode('utf-8'))
+
     cmd = "free -m | awk 'NR==2{printf \"%.0f\", $3*100/$2 }'"
     MemUsage = subprocess.check_output(cmd, shell = True )
     MemUsage = str(MemUsage.decode('utf-8'))
+
     cmd = "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
     Disk = subprocess.check_output(cmd, shell = True )
+
+    cmd = "cat /sys/devices/virtual/thermal/thermal_zone*/temp | head -n4 | awk -v max=0 '{if ($1 > max){ max = $1; }} END {printf \"%.0f\", max/1000}'"
+    Temperature = subprocess.check_output(cmd, shell = True )
+    Temperature = str(Temperature.decode('utf-8'))
+
 
     linecnt = 0
 
@@ -88,15 +95,16 @@ while True:
 
     # Draw text
     if ethIp != None:
-        draw.text((x, top + (lineheight * linecnt)),       "ETH:  " + str(ethIp),  font=font, fill=255)
+        draw.text((x, top + (lineheight * linecnt)),   "ETH:  " + str(ethIp),  font=font, fill=255)
         linecnt += 1
     if wifiIp != None:
-        draw.text((x, top + (lineheight * linecnt)),       "WIFI: " + str(wifiIp), font=font, fill=255)
+        draw.text((x, top + (lineheight * linecnt)),   "WIFI: " + str(wifiIp), font=font, fill=255)
         linecnt += 1
+
     if (disploop % 4) < 2:
-        draw.text((x, top + (lineheight * linecnt)),   "CPU:" + CPU + "  MEM:" + MemUsage,  font=font, fill=255)
+        draw.text((x, top + (lineheight * linecnt)),   "C:" + CPU + "  M:" + MemUsage + "  T:" + Temperature, font=font, fill=255)
     else:
-        draw.text((x, top + (lineheight * linecnt)),   str(Disk.decode('utf-8')),           font=font, fill=255)
+        draw.text((x, top + (lineheight * linecnt)),   str(Disk.decode('utf-8')),  font=font, fill=255)
     linecnt += 1
 
     # Display image.
