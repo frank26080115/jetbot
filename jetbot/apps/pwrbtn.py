@@ -32,27 +32,28 @@ def btn_event(channel):
 	prev_btn_val = v
 
 if __name__ == '__main__':
-	GPIO.setwarnings(False)
-	GPIO.setmode(GPIO.BCM)
-	GPIO.setup(but_pin, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
-	GPIO.add_event_detect(but_pin, GPIO.BOTH, callback=btn_event, bouncetime=10)
-	print("setup\n")
-	while True:
-		now = datetime.datetime.now()
-		if flag_pressed:
-			flag_pressed = False
-			subprocess.run("sync") # flush cache to disk
-			print("sync\n")
-			# todo: issue lock command to motor driver
-		if time_fall != False:
-			timediff = now - time_fall
-			if timediff.total_seconds() > 3:
-				print("shutdown\n")
-				subprocess.run("shutdown now", shell=True)
-				while True:
-					time.sleep(1)
-					# do nothing, wait for shutdown
-		time.sleep(1)
+	try:
+		GPIO.setwarnings(False)
+		GPIO.setmode(GPIO.BCM)
+		GPIO.setup(but_pin, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
+		GPIO.add_event_detect(but_pin, GPIO.BOTH, callback=btn_event, bouncetime=10)
+		print("setup\n")
+		while True:
+			now = datetime.datetime.now()
+			if flag_pressed:
+				flag_pressed = False
+				subprocess.run("sync") # flush cache to disk
+				print("sync\n")
+				# todo: issue lock command to motor driver
+			if time_fall != False:
+				timediff = now - time_fall
+				if timediff.total_seconds() > 3:
+					print("shutdown\n")
+					subprocess.run("shutdown now", shell=True)
+					while True:
+						time.sleep(1)
+						# do nothing, wait for shutdown
+			time.sleep(1)
 
-finally:
-	GPIO.cleanup()
+	finally:
+		GPIO.cleanup()
