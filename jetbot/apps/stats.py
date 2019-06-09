@@ -59,9 +59,12 @@ bottom = height-padding
 # Move left to right keeping track of the current x position for drawing shapes.
 x = 0
 
+lineheight = 8
+
 # Load default font.
 font = ImageFont.load_default()
 
+disploop = 0
 
 while True:
 
@@ -69,21 +72,35 @@ while True:
     draw.rectangle((0,0,width,height), outline=0, fill=0)
 
     # Shell scripts for system monitoring from here : https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
-    cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
+    cmd = "top -bn1 | grep load | awk '{printf \"%.0f\", $(NF-2)}'"
     CPU = subprocess.check_output(cmd, shell = True )
-    cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
+    CPU = str(CPU.decode('utf-8'))
+    cmd = "free -m | awk 'NR==2{printf \"%.0f\", $3*100/$2 }'"
     MemUsage = subprocess.check_output(cmd, shell = True )
+    MemUsage = str(MemUsage.decode('utf-8'))
     cmd = "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
     Disk = subprocess.check_output(cmd, shell = True )
 
-    # Write two lines of text.
+    linecnt = 0
 
-    draw.text((x, top),       "eth0: " + str(get_ip_address('eth0')),  font=font, fill=255)
-    draw.text((x, top+8),     "wlan0: " + str(get_ip_address('wlan0')), font=font, fill=255)
-    draw.text((x, top+16),    str(MemUsage.decode('utf-8')),  font=font, fill=255)
-    draw.text((x, top+25),    str(Disk.decode('utf-8')),  font=font, fill=255)
+    ethIp = get_ip_address('eth0')
+    wifiIp = get_ip_address('wlan0')
+
+    # Draw text
+    if ethIp != None:
+        draw.text((x, top + (lineheight * linecnt)),       "ETH:  " + str(ethIp),  font=font, fill=255)
+        linecnt += 1
+    if wifiIp != None:
+        draw.text((x, top + (lineheight * linecnt)),       "WIFI: " + str(wifiIp), font=font, fill=255)
+        linecnt += 1
+    if (disploop % 4) < 2:
+        draw.text((x, top + (lineheight * linecnt)),   "CPU:" + CPU + "  MEM:" + MemUsage,  font=font, fill=255)
+    else:
+        draw.text((x, top + (lineheight * linecnt)),   str(Disk.decode('utf-8')),           font=font, fill=255)
+    linecnt += 1
 
     # Display image.
     disp.image(image)
     disp.display()
     time.sleep(1)
+    disploop += 1
