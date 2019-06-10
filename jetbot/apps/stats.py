@@ -18,13 +18,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-import time
+import time, os
 
 import Adafruit_SSD1306
 
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
+
 from jetbot.utils.utils import *
 
 import subprocess
@@ -59,10 +60,13 @@ bottom = height-padding
 # Move left to right keeping track of the current x position for drawing shapes.
 x = 0
 
-lineheight = 8
-
 # Load default font.
-font = ImageFont.load_default()
+try:
+    font = ImageFont.load('/home/jetbot/jetbot/jetbot/fonts/slkscr.pil')
+    lineheight = 8
+except:
+    font = ImageFont.load_default()
+    lineheight = 8
 
 disploop = 0
 
