@@ -52,21 +52,22 @@ draw = ImageDraw.Draw(image)
 # Draw a black filled box to clear the image.
 draw.rectangle((0,0,width,height), outline=0, fill=0)
 
-# Draw some shapes.
-# First define some constants to allow easy resizing of shapes.
-padding = -2
-top = padding
-bottom = height-padding
-# Move left to right keeping track of the current x position for drawing shapes.
-x = 0
-
 # Load default font.
 try:
     font = ImageFont.load('/home/jetbot/jetbot/jetbot/fonts/slkscr.pil')
     lineheight = 8
+    padding = 0
 except:
     font = ImageFont.load_default()
     lineheight = 8
+    padding = -2
+
+# Draw some shapes.
+# First define some constants to allow easy resizing of shapes.
+top = padding
+bottom = height-padding
+# Move left to right keeping track of the current x position for drawing shapes.
+x = 0
 
 disploop = 0
 
@@ -101,7 +102,7 @@ while True:
 
     # Draw text
     if ethIp != None:
-        draw.text((x, top + (lineheight * linecnt)),   "ETH:  " + str(ethIp),  font=font, fill=255)
+        draw.text((x, top + (lineheight * linecnt)),   "ETH: " + str(ethIp),  font=font, fill=255)
         linecnt += 1
     if wifiIp != None:
         if (disploop % 4) < 2 and wifiSsid != None:
