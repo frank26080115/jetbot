@@ -27,6 +27,7 @@ from PIL import ImageDraw
 from PIL import ImageFont
 
 from jetbot.utils.utils import *
+import jetbot.utils.teensyadc as teensyadc
 
 import subprocess
 
@@ -85,12 +86,15 @@ while True:
     MemUsage = subprocess.check_output(cmd, shell = True )
     MemUsage = str(MemUsage.decode('utf-8'))
 
-    cmd = "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
+    cmd = "df -h | awk '$NF==\"/\"{printf \"%s\", $5}'"
     Disk = subprocess.check_output(cmd, shell = True )
+    Disk = str(Disk.decode('utf-8')).rstrip('%')
 
     cmd = "cat /sys/devices/virtual/thermal/thermal_zone*/temp | head -n4 | awk -v max=0 '{if ($1 > max){ max = $1; }} END {printf \"%.0f\", max/1000}'"
     Temperature = subprocess.check_output(cmd, shell = True )
     Temperature = str(Temperature.decode('utf-8'))
+
+    Battery = "%.1f" % teensyadc.read_batt_volts()
 
     linecnt = 0
 
@@ -111,10 +115,13 @@ while True:
             draw.text((x, top + (lineheight * linecnt)),   "WIFI: " + str(wifiIp), font=font, fill=255)
         linecnt += 1
 
+    quickstats = "C:" + CPU
     if (disploop % 4) < 2:
-        draw.text((x, top + (lineheight * linecnt)),   "C:" + CPU + "  M:" + MemUsage + "  T:" + Temperature, font=font, fill=255)
+        quickstats += "  M:" + MemUsage
     else:
-        draw.text((x, top + (lineheight * linecnt)),   str(Disk.decode('utf-8')),  font=font, fill=255)
+        quickstats += "  D:" + Disk
+    quickstats += "  T:" + Temperature + "  B:" + Battery
+    draw.text((x, top + (lineheight * linecnt)), quickstats, font=font, fill=255)
     linecnt += 1
 
     # Display image.
