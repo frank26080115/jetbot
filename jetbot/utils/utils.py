@@ -2,6 +2,7 @@ import subprocess
 import pkg_resources
 import platform
 import os
+import evdev
 
 
 def notebooks_dir():
@@ -39,3 +40,17 @@ def get_network_interface_state(interface):
 
 def get_wifi_ssid():
     return subprocess.check_output('iwgetid -r', shell=True).decode('ascii')[:-1]
+
+def get_dualshock4():
+    devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+    for device in devices:
+        dn = device.name.lower().strip()
+        if dn == "wireless controller":
+            return device
+
+def get_dualshock4_mac():
+    d = get_dualshock4()
+    if d != None:
+        return d.phys
+    else:
+        return None

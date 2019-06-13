@@ -96,6 +96,8 @@ while True:
 
     Battery = "%.1f" % teensyadc.read_batt_volts()
 
+    DualshockMac = get_dualshock4_mac()
+
     linecnt = 0
 
     ethIp = get_ip_address('eth0')
@@ -123,6 +125,10 @@ while True:
     quickstats += "  T:" + Temperature + "  B:" + Battery
     draw.text((x, top + (lineheight * linecnt)), quickstats, font=font, fill=255)
     linecnt += 1
+
+    if DualshockMac != None:
+        draw.text((x, top + (lineheight * linecnt)), "DS4: " + DualshockMac, font=font, fill=255)
+        linecnt += 1
 
     # Display image.
     disp.image(image)
