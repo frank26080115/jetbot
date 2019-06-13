@@ -18,7 +18,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-import time, os
+import time, os, signal, sys
 
 import Adafruit_SSD1306
 
@@ -71,6 +71,19 @@ bottom = height-padding
 x = 0
 
 disploop = 0
+
+def draw_blank(Code, Frame):
+    global draw
+    global disp
+    global image
+    global width
+    global height
+    draw.rectangle((0,0,width,height), outline=0, fill=0)
+    disp.image(image)
+    disp.display()
+    quit()
+
+signal.signal(signal.SIGTERM, draw_blank)
 
 while True:
 

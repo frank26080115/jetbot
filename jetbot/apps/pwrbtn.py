@@ -33,10 +33,10 @@ if __name__ == '__main__':
 					time.sleep(0.01)
 				if heldcnt >= heldlimit:
 					print("shutdown")
-					#subprocess.run("shutdown now", shell=True)
+					subprocess.run("shutdown now", shell=True)
 					quit()
-					#while True: # do nothing, wait for shutdown
-					#	time.sleep(1)
+					while True: # do nothing, wait for shutdown
+						time.sleep(1)
 				else:
 					print("short press")
 			else:
