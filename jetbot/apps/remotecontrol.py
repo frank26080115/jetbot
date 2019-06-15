@@ -1,11 +1,11 @@
 import evdev
-from evdev import InputDevice, categorize, ecodes, KeyEvent 
-import asyncio
+from evdev import InputDevice, categorize, ecodes, KeyEvent
 
-import jetbot.camera as camera
+from jetbot import Robot
+from jetbot import Camera
 import cv2
 
-import time, os, sys, math, datetime
+import time, os, sys, math, datetime, subprocess
 
 CROSS     = 305
 TRIANGLE  = 307
@@ -41,9 +41,12 @@ axis = {
 		"ABS_HAT0Y": 0,
 	}
 
-dev = None
+dualshock = None
 cam = None
+camproc = None
+robot = None
 capidx = 0
+meainingful_input_time = None
 
 def get_dualshock4():
 	devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
@@ -52,9 +55,10 @@ def get_dualshock4():
 		if dn == "wireless controller":
 			return device
 
-def event_handler(event):
+def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 	global axis
 	global cam
+	global robot
 	if event.type == ecodes.EV_ABS: 
 		absevent = categorize(event) 
 		axiscode = ecodes.bytype[absevent.event.type][absevent.event.code]
@@ -63,42 +67,112 @@ def event_handler(event):
 	elif event.type == ecodes.EV_KEY:
 		btnevent = categorize(event) 
 		if event.value == KeyEvent.key_down:
-			if event.code == R1:
-				snapname = get_snap_name(event.code)
-				print("saving pic: " + snapname)
-				cam_capture(snapname)
-			if event.code == PSHOME:
-				if cam != None:
+			if event.code == TPAD:
+				if is_remotecontrol:
 					try:
-						cam.stop()
-						time.sleep(1)
-						del cam
-					finally:
-						cam = None
+						robot.motors_makeSafe()
+					except Exception:
+						pass
+				elif is_cameracapture:
+					end_cam_proc()
+			elif event.code == PSHOME:
+				if is_remotecontrol:
+					try:
+						robot.motors_makeUnsafe()
+					except Exception:
+						pass
+			elif event.code == R1:
+				if is_remotecontrol:
+					start_cam_proc()
+				elif is_cameracapture:
+					snapname = get_snap_name(event.code)
+					print("saving single pic: " + snapname)
+					cam_capture(snapname)
+			elif event.code == R2:
+				if is_remotecontrol:
+					start_cam_proc()
 		elif event.value == KeyEvent.key_up:
-			abc = 1
+			pass
 
-def run():
-	global cam
-	global dev
+def run(remotecontrol=True, cameracapture=False):
+	global dualshock
+	global robot
 	global axis
+	global meainingful_input_time
+
+	if remotecontrol:
+		robot = Robot()
+
 	while True:
-		dev = get_dualshock4()
-		if dev != None:
-			print("DualShock4 found, %s" % str(dev))
+		dualshock = get_dualshock4()
+		if dualshock != None:
+			print("DualShock4 found, %s" % str(dualshock))
 		else:
 			time.sleep(2)
-		while dev != None:
+		while dualshock != None:
 			try:
-				event = dev.read_one()
+				event = dualshock.read_one()
 				if event != None:
-					event_handler(event)
+					event_handler(event, is_remotecontrol=remotecontrol, is_cameracapture=cameracapture)
 				else:
 					time.sleep(0)
+					all_btns = dualshock.active_keys()
+					if remotecontrol:
+						meainingful_input = False # meaningful input means any buttons pressed or the stick has been moved
+						mag_dpad, ang_dpad = axis_vector(axis[DPAD_X], axis[DPAD_Y])
+						mag_left, ang_left = axis_vector(axis_normalize(axis[LEFT_X], curve=0), axis_normalize(axis[LEFT_Y], curve=0))
+						mag_right, ang_right = axis_vector(axis_normalize(axis[RIGHT_X], curve=0), axis_normalize(axis[RIGHT_Y], curve=0))
+						now = datetime.datetime.now()
+						if len(all_btns) > 0 or mag_dpad != 0 or mag_left > 0.1 or mag_right > 0.1:
+							meainingful_input = True
+							meainingful_input_time = now
+						elif meainingful_input_time != None: # user may have let go, check for timeout
+							delta_time = now - meainingful_input_time
+							if delta_time.total_seconds() > 2:
+								meainingful_input = False
+								meainingful_input_time = None
+								robot.stop()
+							else:
+								meainingful_input = True
+
+						if meainingful_input:
+							left_speed = 0
+							right_speed = 0
+							ignore_dpad = False
+							ignore_rightstick = False
+							if mag_dpad != 0 and ignore_dpad == False:
+								left_speed, right_speed = axis_mix(axis[DPAD_X], axis[DPAD_Y])
+								left_speed /= 4
+								right_speed /= 4
+							elif mag_left > mag_right or ignore_rightstick == True:
+								left_speed, right_speed = axis_mix(axis_normalize(axis[LEFT_X]), axis_normalize(axis[LEFT_Y]))
+								if ignore_rightstick == False:
+									left_speed /= 2
+									right_speed /= 2
+							else:
+								left_speed, right_speed = axis_mix(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[RIGHT_Y]))
+							robot.set_motors(left_speed, right_speed)
+					elif cameracapture:
+						if R2 in all_btns:
+							snapname = get_snap_name(R2)
+							print("saving running pic: " + snapname)
+							cam_capture(snapname)
+							now = datetime.datetime.now()
+							cam_frame_time = now
+							while True:
+								now = datetime.datetime.now()
+								cam_frame_timedelta = now - cam_frame_time
+								if cam_frame_timedelta.total_seconds() >= 0.25:
+									break
+								event = dualshock.read_one()
+								if event != None:
+									event_handler(event, is_remotecontrol=False, is_cameracapture=True)
 
 			except OSError:
 				print("DualShock4 disconnected")
-				dev = None
+				dualshock = None
+				if cameracapture:
+					end_cam_proc()
 
 def axis_normalize(v, curve=2.1, deadzone_inner=8, deadzone_outer=8):
 	limit = 255
@@ -112,7 +186,8 @@ def axis_normalize(v, curve=2.1, deadzone_inner=8, deadzone_outer=8):
 	r -= center + deadzone_inner
 	v = v / r
 
-	v = (math.exp(v * curve) - math.exp(0)) / (math.exp(curve) - math.exp(0))
+	if curve != 0:
+		v = (math.exp(v * curve) - math.exp(0)) / (math.exp(curve) - math.exp(0))
 
 	if v < 0.0:
 		return 0 * m
@@ -130,12 +205,12 @@ def axis_mix(x, y):
 	right = min(1.0, max(-1.0, right))
 	return left, right
 
-def axis_vector(x, y):
+def axis_vector(x, y, maglim = 2.0):
 	mag = math.sqrt((x*x) + (y*y))
 	theta = math.atan2(x, -y)
 	ang = math.degrees(theta)
-	if mag > 1.0:
-		mag = 1.0
+	if mag > maglim:
+		mag = maglim
 	return mag, ang
 
 def cam_capture(fn):
@@ -155,7 +230,7 @@ def cam_capture(fn):
 
 	if cam == None:
 		try:
-			cam = camera.Camera()
+			cam = Camera()
 		except Exception as ex:
 			print("Exception initializing camera: " + str(ex))
 			cam = None
@@ -169,7 +244,7 @@ def cam_capture(fn):
 		print("Exception writing to file '%s', error: %s" % (fp, str(ex)))
 
 def get_snap_name(initiating_key=None):
-	global dev
+	global dualshock
 	global capidx
 	global axis
 
@@ -177,7 +252,7 @@ def get_snap_name(initiating_key=None):
 
 	keybitmap = 0
 	try:
-		all_btns = dev.active_keys()
+		all_btns = dualshock.active_keys()
 		for b in all_btns:
 			bb = b - 304
 			keybitmap |= 1 << bb
@@ -198,12 +273,12 @@ def get_snap_name(initiating_key=None):
 			ang = 360 + ang
 		name += "_%03u%03u" % (round(mag * 100.0), round(ang))
 
-		mag, ang = axis_vector(axis_normalize(axis[LEFT_X]), axis_normalize(axis[LEFT_Y]))
+		mag, ang = axis_vector(axis_normalize(axis[LEFT_X]), axis_normalize(axis[LEFT_Y]), maglim=1.0)
 		if ang < 0:
 			ang = 360 + ang
 		name += "_%03u%03u" % (round(mag * 100.0), round(ang))
 
-		mag, ang = axis_vector(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[RIGHT_Y]))
+		mag, ang = axis_vector(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[RIGHT_Y]), maglim=1.0)
 		if ang < 0:
 			ang = 360 + ang
 		name += "_%03u%03u" % (round(mag * 100.0), round(ang))
@@ -211,3 +286,21 @@ def get_snap_name(initiating_key=None):
 		print ("Exception while generating snap name: " + str(ex))
 
 	return name
+
+def start_cam_proc():
+	global camproc
+	if camproc != None:
+		return
+	camproc = subprocess.run("python3 remotecamera.py", shell=True)
+	print("started camera process")
+
+def end_cam_proc():
+	global camproc
+	if camproc != None:
+		return
+	camproc.kill()
+	camproc = None
+	print("ended camera process")
+
+if __name__ == '__main__':
+	run()
