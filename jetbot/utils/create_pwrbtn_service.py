@@ -17,7 +17,7 @@ Description=JetBot Power Button Service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 %s/jetbot/apps/pwrbtn.py
+ExecStart=/usr/bin/python3 %s/jetbot/jetbot/apps/pwrbtn.py
 WorkingDirectory=%s
 Restart=always
 
