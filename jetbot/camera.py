@@ -1,7 +1,7 @@
 import traitlets
 from traitlets.config.configurable import SingletonConfigurable
 import atexit
-import cv2
+from cv2 import VideoCapture, CAP_GSTREAMER
 import threading
 import numpy as np
 
@@ -23,7 +23,7 @@ class Camera(SingletonConfigurable):
         super(Camera, self).__init__(*args, **kwargs)
 
         try:
-            self.cap = cv2.VideoCapture(self._gst_str(), cv2.CAP_GSTREAMER)
+            self.cap = VideoCapture(self._gst_str(), CAP_GSTREAMER)
 
             re, image = self.cap.read()
 
@@ -53,7 +53,7 @@ class Camera(SingletonConfigurable):
     
     def start(self):
         if not self.cap.isOpened():
-            self.cap.open(self._gst_str(), cv2.CAP_GSTREAMER)
+            self.cap.open(self._gst_str(), CAP_GSTREAMER)
         if not hasattr(self, 'thread') or not self.thread.isAlive():
             self.thread = threading.Thread(target=self._capture_frames)
             self.thread.start()
