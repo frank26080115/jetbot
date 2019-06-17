@@ -6,6 +6,7 @@ from jetbot import Camera
 from cv2 import imencode
 
 import time, os, sys, math, datetime, subprocess
+import pwd, grp
 
 CROSS     = 305
 TRIANGLE  = 307
