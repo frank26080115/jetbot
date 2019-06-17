@@ -91,7 +91,7 @@ while True:
     draw.rectangle((0,0,width,height), outline=0, fill=0)
 
     # Shell scripts for system monitoring from here : https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
-    cmd = "top -bn1 | grep load | awk '{printf \"%.0f\", $(NF-2)}'"
+    cmd = "top -bn1 | grep load | awk '{printf \"%.1f\", $(NF-2)}'"
     CPU = subprocess.check_output(cmd, shell = True )
     CPU = str(CPU.decode('utf-8'))
 
