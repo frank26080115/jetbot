@@ -1,3 +1,4 @@
+import sys
 from smbus2 import SMBus
 
 bus = None
