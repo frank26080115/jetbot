@@ -29,6 +29,10 @@ class Camera(SingletonConfigurable):
         self.undistort_balance = 0
         self.undistort_dim2 = None
         self.undistort_dim3 = None
+        self.crop_x1 = None
+        self.crop_y1 = None
+        self.crop_x2 = None
+        self.crop_y2 = None
 
         try:
             self.cap = VideoCapture(self._gst_str(), CAP_GSTREAMER)
@@ -103,7 +107,32 @@ class Camera(SingletonConfigurable):
     def disable_undistort(self):
         self.undistort = False
 
+    def enable_crop(self, x1, y1, x2=None, y2=None, width=None, height=None):
+        self.crop_x1 = x1
+        self.crop_y1 = y1
+        if (x2 != None and width != None) or (x2 == None and width == None) or (y2 != None and height != None) or (y2 == None and height == None):
+            self.crop_x1 = None
+            self.crop_y1 = None
+            raise ValueError("Too many or not enough arguments for cropping")
+        else:
+            if x2 != None:
+                self.crop_x2 = x2
+            else:
+                self.crop_x2 = x1 + width
+            if y2 != None:
+                self.crop_y2 = y2
+            else:
+                self.crop_y2 = y1 + height
+
+    def disable_crop(self):
+        self.crop_x1 = None
+        self.crop_y1 = None
+        self.crop_x2 = None
+        self.crop_y2 = None
+
     def post_process_image(self, img):
         if self.undistort:
             img = undistort_image(img, self.undistort_dim, self.undistort_k, self.undistort_d, balance=self.undistort_balance, dim2=self.undistort_dim2, dim3=self.undistort_dim3)
+        if self.crop_x1 != None and self.crop_y1 != None and self.crop_x2 != None and self.crop_y2 != None:
+            img = img[self.crop_y1:self.crop_y2, self.crop_x1:self.crop_x2]
         return img
