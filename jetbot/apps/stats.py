@@ -111,6 +111,14 @@ while True:
 
     DualshockMac = get_dualshock4_mac()
 
+    cmd = "ps -A -F | grep remotecamera | grep -v grep | awk '{printf \"%s\", $10}'"
+    CameraActive = subprocess.check_output(cmd, shell = True )
+    CameraActive = str(CameraActive.decode('utf-8'))
+    if len(CameraActive) > 0:
+        CameraActive = "CAM %s" % (CameraActive)
+    else:
+        CameraActive = None
+
     linecnt = 0
 
     ethIp = get_ip_address('eth0')
@@ -139,8 +147,11 @@ while True:
     draw.text((x, top + (lineheight * linecnt)), quickstats, font=font, fill=255)
     linecnt += 1
 
-    if DualshockMac != None:
-        draw.text((x, top + (lineheight * linecnt)), "DS4: " + DualshockMac, font=font, fill=255)
+    if DualshockMac != None or CameraActive != None:
+        if DualshockMac != None and ((disploop % 2) < 1 or CameraActive == None):
+            draw.text((x, top + (lineheight * linecnt)), "DS4: " + DualshockMac, font=font, fill=255)
+        elif CameraActive != None:
+            draw.text((x, top + (lineheight * linecnt)), CameraActive, font=font, fill=255)
         linecnt += 1
 
     # Display image.

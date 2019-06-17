@@ -3,7 +3,7 @@ from evdev import InputDevice, categorize, ecodes, KeyEvent
 
 from jetbot import Robot
 from jetbot import Camera
-import cv2
+from cv2 import imencode
 
 import time, os, sys, math, datetime, subprocess
 
@@ -21,6 +21,7 @@ SHARE     = 312
 OPTION    = 313
 TPAD      = 317
 PSHOME    = 316
+OTHERCODE = 320
 LEFT_X    = "ABS_X"   # 0 is left
 LEFT_Y    = "ABS_Y"   # 0 is up
 RIGHT_X   = "ABS_Z"   # 0 is left
@@ -46,7 +47,6 @@ cam = None
 camproc = None
 robot = None
 capidx = 0
-meainingful_input_time = None
 
 def get_dualshock4():
 	devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
@@ -59,6 +59,10 @@ def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 	global axis
 	global cam
 	global robot
+	if is_cameracapture and cam == None:
+		snapname = get_snap_name(OTHERCODE)
+		print("saving single pic: " + snapname)
+		cam_capture(snapname)
 	if event.type == ecodes.EV_ABS: 
 		absevent = categorize(event) 
 		axiscode = ecodes.bytype[absevent.event.type][absevent.event.code]
@@ -73,8 +77,9 @@ def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 						robot.motors_makeSafe()
 					except Exception:
 						pass
-				elif is_cameracapture:
 					end_cam_proc()
+				elif is_cameracapture:
+					pass
 			elif event.code == PSHOME:
 				if is_remotecontrol:
 					try:
@@ -98,10 +103,25 @@ def run(remotecontrol=True, cameracapture=False):
 	global dualshock
 	global robot
 	global axis
-	global meainingful_input_time
+	meainingful_input_time = None
+	cam_cap_time = None
+	last_speed_debug_time = datetime.datetime.now()
+
+	print("Remote Control script running! ", end=" ")
+	if remotecontrol:
+		print("in RC mode")
+	elif cameracapture:
+		print("in CAMERA mode")
+	else:
+		print("unknown mode, quitting")
+		quit()
 
 	if remotecontrol:
-		robot = Robot()
+		try:
+			robot = Robot()
+		except Exception as ex:
+			sys.stderr.write("Failed to initialize motor drivers, error: %s" % (str(ex)))
+			robot = None
 
 	while True:
 		dualshock = get_dualshock4()
@@ -125,13 +145,17 @@ def run(remotecontrol=True, cameracapture=False):
 						now = datetime.datetime.now()
 						if len(all_btns) > 0 or mag_dpad != 0 or mag_left > 0.1 or mag_right > 0.1:
 							meainingful_input = True
+							if meainingful_input_time == None:
+								print("meaningful input!")
 							meainingful_input_time = now
 						elif meainingful_input_time != None: # user may have let go, check for timeout
 							delta_time = now - meainingful_input_time
 							if delta_time.total_seconds() > 2:
+								print("No meaningful input, stopping robot motors")
 								meainingful_input = False
 								meainingful_input_time = None
-								robot.stop()
+								if robot != None:
+									robot.stop()
 							else:
 								meainingful_input = True
 
@@ -139,7 +163,7 @@ def run(remotecontrol=True, cameracapture=False):
 							left_speed = 0
 							right_speed = 0
 							ignore_dpad = False
-							ignore_rightstick = False
+							ignore_rightstick = True
 							if mag_dpad != 0 and ignore_dpad == False:
 								left_speed, right_speed = axis_mix(axis[DPAD_X], axis[DPAD_Y])
 								left_speed /= 4
@@ -151,13 +175,29 @@ def run(remotecontrol=True, cameracapture=False):
 									right_speed /= 2
 							else:
 								left_speed, right_speed = axis_mix(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[RIGHT_Y]))
-							robot.set_motors(left_speed, right_speed)
+							if robot != None:
+								robot.set_motors(left_speed, right_speed)
+							delta_time = now - last_speed_debug_time
+							if delta_time.total_seconds() >= 1:
+								print("leftmotor: %.2f      rightmotor: %.2f" % (left_speed, right_speed))
+								last_speed_debug_time = now
 					elif cameracapture:
+						now = datetime.datetime.now()
+						need_cap = False
 						if R2 in all_btns:
-							snapname = get_snap_name(R2)
+							cam_cap_time = now
+							need_cap = R2
+						else:
+							if cam_cap_time != None:
+								timedelta = now - cam_cap_time
+								if timedelta.total_seconds() < 5:
+									need_cap = OTHERCODE
+								else:
+									cam_cap_time = None
+						if need_cap != False:
+							snapname = get_snap_name(need_cap)
 							print("saving running pic: " + snapname)
 							cam_capture(snapname)
-							now = datetime.datetime.now()
 							cam_frame_time = now
 							while True:
 								now = datetime.datetime.now()
@@ -171,7 +211,7 @@ def run(remotecontrol=True, cameracapture=False):
 			except OSError:
 				print("DualShock4 disconnected")
 				dualshock = None
-				if cameracapture:
+				if remotecontrol:
 					end_cam_proc()
 
 def axis_normalize(v, curve=2.1, deadzone_inner=8, deadzone_outer=8):
@@ -230,18 +270,26 @@ def cam_capture(fn):
 
 	if cam == None:
 		try:
-			cam = Camera()
+			print("Initializing camera...")
+			cam = Camera.instance(width=960, height=720, flipmode=2)
+			print("\r\nCamera initialized!")
 		except Exception as ex:
-			print("Exception initializing camera: " + str(ex))
+			sys.stderr.write("Exception initializing camera: " + str(ex))
 			cam = None
 			return
 
 	try:
 		fp = os.path.join(path, fn + '.jpg')
 		with open(fp, 'wb') as f:
-			f.write(bytes(cv2.imencode('.jpg', cam.value)[1]))
+			f.write(bytes(imencode('.jpg', cam.value)[1]))
+		try:
+			uid = pwd.getpwnam("jetbot").pw_uid
+			gid = grp.getgrnam("jetbot").gr_gid
+			os.chown(fp, uid, gid)
+		except Exception as ex:
+			sys.stderr.write("Exception changing ownership of file '%s', error: %s" % (fp, str(ex)))
 	except Exception as ex:
-		print("Exception writing to file '%s', error: %s" % (fp, str(ex)))
+		sys.stderr.write("Exception writing to file '%s', error: %s" % (fp, str(ex)))
 
 def get_snap_name(initiating_key=None):
 	global dualshock
@@ -283,7 +331,7 @@ def get_snap_name(initiating_key=None):
 			ang = 360 + ang
 		name += "_%03u%03u" % (round(mag * 100.0), round(ang))
 	except Exception as ex:
-		print ("Exception while generating snap name: " + str(ex))
+		sys.stderr.write ("Exception while generating snap name: " + str(ex))
 
 	return name
 
@@ -291,16 +339,21 @@ def start_cam_proc():
 	global camproc
 	if camproc != None:
 		return
-	camproc = subprocess.run("python3 remotecamera.py", shell=True)
-	print("started camera process")
+	print("starting camera process...", end=" ")
+	camproc = subprocess.Popen(['python3', '/home/jetbot/jetbot/jetbot/apps/remotecamera.py'])
+	print(" done!")
 
 def end_cam_proc():
 	global camproc
-	if camproc != None:
+	if camproc == None:
 		return
-	camproc.kill()
-	camproc = None
-	print("ended camera process")
+	try:
+		camproc.kill()
+		camproc = None
+	except Exception as ex:
+		sys.stderr.write("Exception while trying to kill camera process: " + str(ex))
+	finally:
+		print("ended camera process")
 
 if __name__ == '__main__':
 	run()
