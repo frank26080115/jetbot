@@ -4,7 +4,7 @@ import atexit
 from cv2 import VideoCapture, CAP_GSTREAMER
 import threading
 import numpy as np
-from jetbot.utils.undistort import undistort_image
+from jetbot.utils.undistort import *
 
 class Camera(SingletonConfigurable):
     
@@ -17,6 +17,7 @@ class Camera(SingletonConfigurable):
     capture_width = traitlets.Integer(default_value=3280).tag(config=True)
     capture_height = traitlets.Integer(default_value=2464).tag(config=True)
     flipmode = traitlets.Integer(default_value=2).tag(config=True) # Frank: my robot has an upside-down camera to make the cable neater
+    extraconfig = traitlets.Unicode(default_value="").tag(config=True)
 
     def __init__(self, *args, **kwargs):
         self.value = np.empty((self.height, self.width, 3), dtype=np.uint8)
@@ -60,8 +61,8 @@ class Camera(SingletonConfigurable):
                 break
                 
     def _gst_str(self):
-        return 'nvarguscamerasrc ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv flip-method=%d ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! videoconvert ! appsink' % (
-                self.capture_width, self.capture_height, self.fps, self.flipmode, self.width, self.height)
+        return 'nvarguscamerasrc %s ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv flip-method=%d ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! videoconvert ! appsink' % (
+                self.extraconfig, self.capture_width, self.capture_height, self.fps, self.flipmode, self.width, self.height)
     
     def start(self):
         if not self.cap.isOpened():
@@ -132,7 +133,10 @@ class Camera(SingletonConfigurable):
 
     def post_process_image(self, img):
         if self.undistort:
-            img = undistort_image(img, self.undistort_dim, self.undistort_k, self.undistort_d, balance=self.undistort_balance, dim2=self.undistort_dim2, dim3=self.undistort_dim3)
+            if self.undistort_balance == 0 and self.undistort_dim2 == None and self.undistort_dim3 == None:
+                img = undistort_image_unsafe(img, self.undistort_k, self.undistort_d)
+            else:
+                img = undistort_image_unsafe(img, self.undistort_k, self.undistort_d, balance=self.undistort_balance, dim2=self.undistort_dim2, dim3=self.undistort_dim3)
         if self.crop_x1 != None and self.crop_y1 != None and self.crop_x2 != None and self.crop_y2 != None:
             img = img[self.crop_y1:self.crop_y2, self.crop_x1:self.crop_x2]
         return img
