@@ -60,16 +60,19 @@ def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 	global axis
 	global cam
 	global robot
-	if is_cameracapture and cam == None:
-		snapname = get_snap_name(OTHERCODE)
-		print("saving single pic: " + snapname)
-		cam_capture(snapname)
+
 	if event.type == ecodes.EV_ABS: 
 		absevent = categorize(event) 
 		axiscode = ecodes.bytype[absevent.event.type][absevent.event.code]
 		if "ABS_" in axiscode:
 			axis[axiscode] = absevent.event.value
-	elif event.type == ecodes.EV_KEY:
+
+	if is_cameracapture and cam == None:
+		snapname = get_snap_name(OTHERCODE)
+		print("saving single pic: " + snapname)
+		cam_capture(snapname)
+
+	if event.type == ecodes.EV_KEY:
 		btnevent = categorize(event) 
 		if event.value == KeyEvent.key_down:
 			if event.code == TPAD:
@@ -264,7 +267,7 @@ def cam_capture(fn):
 	try:
 		os.makedirs(path)
 	except FileExistsError:
-		path = path
+		pass
 	except Exception as ex:
 		print("Exception creating directory '%s', error: %s" % (path, str(ex)))
 		return
@@ -306,7 +309,7 @@ def get_snap_name(initiating_key=None):
 			bb = b - 304
 			keybitmap |= 1 << bb
 	except:
-		keybitmap = keybitmap
+		pass
 
 	if initiating_key != None:
 		bb = initiating_key - 304
@@ -355,6 +358,14 @@ def end_cam_proc():
 		sys.stderr.write("Exception while trying to kill camera process: " + str(ex))
 	finally:
 		print("ended camera process")
+
+def set_camera_instance(c):
+	global cam
+	cam = c
+
+def get_camera_instance():
+	global cam
+	return cam
 
 if __name__ == '__main__':
 	run()
