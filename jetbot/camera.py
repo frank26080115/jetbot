@@ -1,10 +1,11 @@
 import traitlets
 from traitlets.config.configurable import SingletonConfigurable
 import atexit
+import cv2
 from cv2 import VideoCapture, CAP_GSTREAMER
 import threading
 import numpy as np
-from jetbot.utils.undistort import *
+from jetbot.utils.undistort import FisheyeUndistorter
 
 class Camera(SingletonConfigurable):
     
@@ -24,12 +25,15 @@ class Camera(SingletonConfigurable):
         super(Camera, self).__init__(*args, **kwargs)
 
         self.undistort = False
+        self.undistorter = None
         self.undistort_dim = None
         self.undistort_k = None
         self.undistort_d = None
         self.undistort_balance = 0
         self.undistort_dim2 = None
         self.undistort_dim3 = None
+        self.undistort_map1 = None
+        self.undistort_map2 = None
         self.crop_x1 = None
         self.crop_y1 = None
         self.crop_x2 = None
@@ -47,8 +51,7 @@ class Camera(SingletonConfigurable):
             self.start()
         except:
             self.stop()
-            raise RuntimeError(
-                'Could not initialize camera.  Please see error trace.')
+            raise RuntimeError('Could not initialize camera.  Please see error trace.')
 
         atexit.register(self.stop)
 
@@ -104,6 +107,8 @@ class Camera(SingletonConfigurable):
                     self.undistort = True
                 else:
                     self.undistort = False
+        if self.undistort:
+            self.undistorter = FisheyeUndistorter(self.undistort_dim, self.undistort_k, self.undistort_d, bal=self.undistort_balance, dim2=self.undistort_dim2, dim3=self.undistort_dim3)
 
     def disable_undistort(self):
         self.undistort = False
@@ -132,11 +137,8 @@ class Camera(SingletonConfigurable):
         self.crop_y2 = None
 
     def post_process_image(self, img):
-        if self.undistort:
-            if self.undistort_balance == 0 and self.undistort_dim2 == None and self.undistort_dim3 == None:
-                img = undistort_image_unsafe(img, self.undistort_k, self.undistort_d)
-            else:
-                img = undistort_image_unsafe(img, self.undistort_k, self.undistort_d, balance=self.undistort_balance, dim2=self.undistort_dim2, dim3=self.undistort_dim3)
+        if self.undistort and self.undistorter != None:
+            img = self.undistorter.undistort_image(img)
         if self.crop_x1 != None and self.crop_y1 != None and self.crop_x2 != None and self.crop_y2 != None:
             img = img[self.crop_y1:self.crop_y2, self.crop_x1:self.crop_x2]
         return img
