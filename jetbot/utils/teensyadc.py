@@ -46,6 +46,32 @@ def read_buff(adr, len=16):
 		bus = None
 		return None
 
+def write_buff(data0, data):
+	global bus
+	global I2C_SLAVE_ADDR
+	if bus == None:
+		get_bus()
+	if bus == None:
+		return
+	try:
+		bus.write_i2c_block_data(I2C_SLAVE_ADDR, data0, data)
+	except Exception as err:
+		try:
+			bus.close()
+		finally:
+			bus = None
+		sys.stderr.write('I2C-write exception\n' + str(err))
+		bus = None
+		return
+	except:
+		try:
+			bus.close()
+		finally:
+			bus = None
+		sys.stderr.write('I2C-write unknown error\n' + sys.exc_info()[0])
+		bus = None
+		return
+
 def read_buff_adc10():
 	len = 7
 	data = read_buff(0xD0, len * 2)
@@ -96,3 +122,7 @@ def read_batt_volts():
 def set_batt_divider(x):
 	global batt_divider
 	batt_divider = x
+
+def set_camera_led():
+	data = bytearray(b'\x01')
+	write_buff(0xFE, data)

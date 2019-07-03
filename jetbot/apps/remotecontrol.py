@@ -3,6 +3,7 @@ from evdev import InputDevice, categorize, ecodes, KeyEvent
 
 from jetbot import Robot
 from jetbot import Camera
+import jetbot.utils.teensyadc as teensyadc
 from cv2 import imencode
 
 import time, os, sys, math, datetime, subprocess
@@ -48,6 +49,7 @@ cam = None
 camproc = None
 robot = None
 capidx = 0
+continuouscap = False
 
 def get_dualshock4():
 	devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
@@ -60,6 +62,7 @@ def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 	global axis
 	global cam
 	global robot
+	global continuouscap
 
 	if event.type == ecodes.EV_ABS: 
 		absevent = categorize(event) 
@@ -100,6 +103,8 @@ def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 			elif event.code == R2:
 				if is_remotecontrol:
 					start_cam_proc()
+				elif is_cameracapture:
+					continuouscap = not continuouscap
 		elif event.value == KeyEvent.key_up:
 			pass
 
@@ -107,6 +112,7 @@ def run(remotecontrol=True, cameracapture=False):
 	global dualshock
 	global robot
 	global axis
+	global continuouscap
 	meainingful_input_time = None
 	cam_cap_time = None
 	last_speed_debug_time = datetime.datetime.now()
@@ -188,14 +194,15 @@ def run(remotecontrol=True, cameracapture=False):
 					elif cameracapture:
 						now = datetime.datetime.now()
 						need_cap = False
-						if R2 in all_btns:
+						if continuouscap:
 							cam_cap_time = now
 							need_cap = R2
 						else:
 							if cam_cap_time != None:
 								timedelta = now - cam_cap_time
-								if timedelta.total_seconds() < 5:
-									need_cap = OTHERCODE
+								if timedelta.total_seconds() < 1:
+									#need_cap = OTHERCODE
+									pass
 								else:
 									cam_cap_time = None
 						if need_cap != False:
@@ -286,6 +293,7 @@ def cam_capture(fn):
 		fp = os.path.join(path, fn + '.jpg')
 		with open(fp, 'wb') as f:
 			f.write(bytes(imencode('.jpg', cam.value)[1]))
+		teensyadc.set_camera_led()
 		try:
 			uid = pwd.getpwnam("jetbot").pw_uid
 			gid = grp.getgrnam("jetbot").gr_gid
