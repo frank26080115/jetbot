@@ -18,10 +18,11 @@ def polar2usercontrol(m, a):
 
 class TaggedImage(object):
 
-	def __init__(self, fpath, whichstick="auto"):
+	def __init__(self, fpath, whichstick = "auto", flipstick = False):
 		self.img_cv2 = None
 		self.img_pil = None
 		self.fpath = fpath
+		self.dpath = os.path.dirname(fpath)
 		self.fname = os.path.basename(fpath)
 		self.tag = os.path.splitext(self.fname)[0]
 		splitparts = self.tag.split('_')
@@ -33,32 +34,40 @@ class TaggedImage(object):
 		self.stickmagnitude_right, self.stickangle_right = parse_joystick(splitparts[5])
 		if whichstick == "left":
 			self.throttle, self.steering = polar2usercontrol(self.stickmagnitude_left, self.stickangle_left)
+			self.stickangle = self.stickangle_left
 		elif whichstick == "right":
 			self.throttle, self.steering = polar2usercontrol(self.stickmagnitude_right, self.stickangle_right)
+			self.stickangle = self.stickangle_right
 		elif whichstick == "ltrs":
 			lt, ls = polar2usercontrol(self.stickmagnitude_left, self.stickangle_left)
 			rt, rs = polar2usercontrol(self.stickmagnitude_right, self.stickangle_right)
 			self.throttle = lt
 			self.steering = rs
+			self.stickangle = self.stickangle_right
 		elif whichstick == "lsrt":
 			lt, ls = polar2usercontrol(self.stickmagnitude_left, self.stickangle_left)
 			rt, rs = polar2usercontrol(self.stickmagnitude_right, self.stickangle_right)
 			self.throttle = rt
 			self.steering = ls
+			self.stickangle = self.stickangle_left
 		elif whichstick == "dpad":
 			self.throttle, self.steering = polar2usercontrol(self.stickmagnitude_dpad, self.stickangle_dpad)
+			self.stickangle = self.stickangle_dpad
 		elif whichstick == "max" or whichstick == "auto":
 			if self.stickmagnitude_dpad >= self.stickmagnitude_left and self.stickmagnitude_dpad >= self.stickmagnitude_right:
-				self.throttle = self.stickmagnitude_dpad
-				self.steering = self.stickangle_dpad
+				self.throttle, self.steering = polar2usercontrol(self.stickmagnitude_dpad, self.stickangle_dpad)
+				self.stickangle = self.stickangle_dpad
 			elif self.stickmagnitude_left >= self.stickmagnitude_dpad and self.stickmagnitude_left >= self.stickmagnitude_right:
-				self.throttle = self.stickmagnitude_left
-				self.steering = self.stickangle_left
+				self.throttle, self.steering = polar2usercontrol(self.stickmagnitude_left, self.stickangle_left)
+				self.stickangle = self.stickangle_left
 			else:
-				self.throttle = self.stickmagnitude_right
-				self.steering = self.stickangle_right
+				self.throttle, self.steering = polar2usercontrol(self.stickmagnitude_right, self.stickangle_right)
+				self.stickangle = self.stickangle_right
 		else:
 			raise ValueError("Unknown value for parameter \"whichstick\", must be one of the accepted values (left, right, dpad, ltrs, lsrt, max) or default (auto)")
+		if flipstick:
+			self.stickangle = -1 * self.stickangle
+			self.steering = -1 * self.steering
 		self.extra = ""
 		try:
 			self.extra = self.tag[53:]
@@ -67,10 +76,18 @@ class TaggedImage(object):
 
 	def load_img_cv2(self, mode=-1):
 		self.img_cv2 = cv2.imread(self.fpath, mode)
+		height, width, channels = self.img_cv2.shape
+		self.iheight = height
+		self.iwidth = width
+		self.ichannels = channels
 		return self.img_cv2
 
 	def load_img_pil(self):
 		self.img_pil = PIL.Image.open(self.fpath)
+		height, width, channels = self.img_pil.shape
+		self.iheight = height
+		self.iwidth = width
+		self.ichannels = channels
 		return self.img_pil
 
 	def convert_to_pil(self):
@@ -128,28 +145,50 @@ class ImageSet(object):
 
 	def __init__(self):
 		self.images = []
+		self.augumented_images = []
 
 	def load_arr(self, arr):
-		self.images = arr
+		for i in arr:
+			self.images.append(i)
+		self.augumented_images = []
 
-	def load_dir(self, dirpath, whichstick="auto"):
+	def load_dir(self, dirpath, whichstick="auto", loadaugs = False):
 		g = glob.glob(os.path.join(dirpath, "*.jpg"))
 		arr = []
 		for fname in g:
 			arr.append(TaggedImage(fname, whichstick))
+		if loadaugs:
+			aug_arr = []
+			ad = glob.glob(os.path.join(dirpath, "aug_*"))
+			aug_name = os.path.basename(ad)[4:]
+			flip = AUG_FLIP in aug_name
+			for d in ad:
+				g = glob.glob(os.path.join(d, "*.jpg"))
+				for fname in g:
+					i = TaggedImage(fname, whichstick, flip)
+					aug_arr.append(i)
+			self.augumented_images = aug_arr
 		self.images = arr
 
 	def sort(self, reverse=False):
 		self.images.sort(key=lambda x: x.sequence, reverse=reverse)
+		self.augumented_images.sort(key=lambda x: x.sequence, reverse=reverse)
 
 	def shuffle(self):
 		random.shuffle(self.images)
+		random.shuffle(self.augumented_images)
 
-	def get_subset(self, every, offset, invert=False):
+	def get_subset(self, every, offset, invert=False, allow_aug=False):
 		i = 0
-		cnt = len(self.images)
+		j = 0
+		cnt1 = len(self.images)
+		if allow_aug:
+			cnt2 = len(self.augumented_images)
+		else:
+			cnt2 = 0
+		cnt = cnt1 + cnt2
 		arr = []
-		while i < cnt:
+		while i < cnt and j < cnt:
 			j = i + offset
 			to_add = False
 			if (j % every) == 0:
@@ -157,7 +196,11 @@ class ImageSet(object):
 			if invert:
 				to_add = !to_add
 			if to_add:
-				arr.append(self.images[j])
+				if j < cnt1:
+					arr.append(self.images[j])
+				elif j < cnt and allow_aug:
+					arr.append(self.augumented_images[j - cnt1])
+			i += 1
 		new_set = ImageSet()
 		new_set.load_arr(arr)
 		return new_set

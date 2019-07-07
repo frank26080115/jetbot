@@ -70,7 +70,6 @@ class KerasPilot(object):
 
 		"""
 		train_gen: generator that yields an array of images an array of
-
 		"""
 
 		#checkpoint to save model after each epoch
