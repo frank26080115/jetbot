@@ -8,16 +8,16 @@ import numpy as np
 from jetbot.utils.undistort import FisheyeUndistorter
 
 class Camera(SingletonConfigurable):
-    
+
     value = traitlets.Any()
-    
+
     # config
     width = traitlets.Integer(default_value=224).tag(config=True)
     height = traitlets.Integer(default_value=224).tag(config=True)
     fps = traitlets.Integer(default_value=21).tag(config=True)
     capture_width = traitlets.Integer(default_value=3280).tag(config=True)
     capture_height = traitlets.Integer(default_value=2464).tag(config=True)
-    flipmode = traitlets.Integer(default_value=2).tag(config=True) # Frank: my robot has an upside-down camera to make the cable neater
+    flipmode = traitlets.Integer(default_value=0).tag(config=True)
     extraconfig = traitlets.Unicode(default_value="").tag(config=True)
 
     def __init__(self, *args, **kwargs):
@@ -62,11 +62,11 @@ class Camera(SingletonConfigurable):
                 self.value = self.post_process_image(image)
             else:
                 break
-                
+
     def _gst_str(self):
         return 'nvarguscamerasrc %s ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv flip-method=%d ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! videoconvert ! appsink' % (
                 self.extraconfig, self.capture_width, self.capture_height, self.fps, self.flipmode, self.width, self.height)
-    
+
     def start(self):
         if not self.cap.isOpened():
             self.cap.open(self._gst_str(), CAP_GSTREAMER)
@@ -79,7 +79,7 @@ class Camera(SingletonConfigurable):
             self.cap.release()
         if hasattr(self, 'thread'):
             self.thread.join()
-            
+
     def restart(self):
         self.stop()
         self.start()
