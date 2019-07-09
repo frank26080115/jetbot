@@ -50,6 +50,7 @@ camproc = None
 robot = None
 capidx = 0
 continuouscap = False
+continuouscaptime = None
 
 def get_dualshock4():
 	devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
@@ -63,6 +64,7 @@ def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 	global cam
 	global robot
 	global continuouscap
+	global continuouscaptime
 
 	if event.type == ecodes.EV_ABS: 
 		absevent = categorize(event) 
@@ -100,11 +102,12 @@ def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 					snapname = get_snap_name(event.code)
 					print("saving single pic: " + snapname)
 					cam_capture(snapname)
-			elif event.code == R2:
+			elif event.code == L1:
 				if is_remotecontrol:
 					start_cam_proc()
 				elif is_cameracapture:
 					continuouscap = not continuouscap
+					continuouscaptime = datetime.datetime.now()
 		elif event.value == KeyEvent.key_up:
 			pass
 
@@ -113,6 +116,9 @@ def run(remotecontrol=True, cameracapture=False):
 	global robot
 	global axis
 	global continuouscap
+	global continuouscaptime
+
+	prevShutter = False
 	meainingful_input_time = None
 	cam_cap_time = None
 	last_speed_debug_time = datetime.datetime.now()
@@ -194,9 +200,22 @@ def run(remotecontrol=True, cameracapture=False):
 					elif cameracapture:
 						now = datetime.datetime.now()
 						need_cap = False
+
+						if L1 in all_btns:
+							if prevShutter == False:
+								if continuouscaptime != None:
+									timedelta = now - continuouscaptime
+									if timedelta.total_seconds() > 0.5:
+										continuouscap = not continuouscap
+								else:
+									continuouscap = not continuouscap
+							prevShutter = True
+						else:
+							prevShutter = False
+
 						if continuouscap:
 							cam_cap_time = now
-							need_cap = R2
+							need_cap = L1
 						else:
 							if cam_cap_time != None:
 								timedelta = now - cam_cap_time
