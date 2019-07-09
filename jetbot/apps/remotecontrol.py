@@ -282,7 +282,7 @@ def cam_capture(fn):
 	if cam == None:
 		try:
 			print("Initializing camera...")
-			cam = Camera.instance(width=960, height=720, flipmode=2)
+			cam = Camera.instance(width=960, height=720)
 			print("\r\nCamera initialized!")
 		except Exception as ex:
 			sys.stderr.write("Exception initializing camera: " + str(ex))
