@@ -44,7 +44,7 @@ class KerasPilot(object):
 		pass
 
 	def compile(self):
-		pass
+		raise NotImplementedError("need to override \"compile\"")
 
 	def set_optimizer(self, optimizer_type, rate, decay):
 		if optimizer_type == "adam":
@@ -64,9 +64,7 @@ class KerasPilot(object):
 		else:
 			raise Exception("unknown optimizer type: %s" % optimizer_type)
 
-	def train(self, train_gen, val_gen,
-			  saved_model_path, epochs=100, steps=100, train_split=0.8,
-			  verbose=1, min_delta=.0005, patience=5, use_early_stop=True):
+	def train(self, train_gen, val_gen, saved_model_path, epochs=100, steps=100, verbose=1, min_delta=.0005, patience=5, use_early_stop=True):
 
 		"""
 		train_gen: generator that yields an array of images an array of
@@ -91,6 +89,8 @@ class KerasPilot(object):
 		if use_early_stop:
 			callbacks_list.append(early_stop)
 
+		v_steps = val_gen.__len__()
+
 		hist = self.model.fit_generator(
 						train_gen,
 						steps_per_epoch=steps,
@@ -98,7 +98,7 @@ class KerasPilot(object):
 						verbose=1,
 						validation_data=val_gen,
 						callbacks=callbacks_list,
-						validation_steps=steps*(1.0 - train_split))
+						validation_steps=v_steps)
 		return hist
 
 
@@ -165,7 +165,7 @@ class KerasLinear(KerasPilot):
 
 
 class KerasRNN_LSTM(KerasPilot):
-	def __init__(self, image_w =160, image_h=120, image_d=3, seq_length=3, num_outputs=2, *args, **kwargs):
+	def __init__(self, image_w=160, image_h=120, image_d=3, seq_length=3, num_outputs=2, *args, **kwargs):
 		super(KerasRNN_LSTM, self).__init__(*args, **kwargs)
 		image_shape = (image_h, image_w, image_d)
 		self.model = rnn_lstm(seq_length=seq_length,

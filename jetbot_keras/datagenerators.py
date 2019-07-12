@@ -54,32 +54,103 @@ class GenericDataGenerator(keras.utils.Sequence):
 
 		return X, keras.utils.to_categorical(y, num_classes=self.n_classes)
 
-class TaggedImageSetDataGenerator(keras.utils.Sequence):
+class TrainingImageSetDataGenerator(keras.utils.Sequence):
 
-	def __init__(self, data, batchsize=128):
-		self.data = data
+	def __init__(self, dirpath, validation_every = 5, validation_skip = 3, batchsize=16, augcnt = 3):
+		self.dirpath = dirpath
+		self.batch_size = batchsize
+		self.augcnt = augcnt
+		self.previmg = None
+		self.previmgidx = -1
+
+		self.filelist = []
+		self.validationlist = []
+
+		allpaths = dirpath.split(';')
+		for singlepath in allpaths:
+			g = glob.glob(os.path.join(singlepath, "*.jpg"))
+			i = 0
+			flen = len(g)
+			while i < flen:
+				j = i + validation_skip
+				addMain = True
+				if j < flen and validation_every > 0:
+					if (j % validation_every) == 0:
+						addMain = False
+				if addMain:
+					self.filelist.append(g[i])
+				else:
+					self.validationlist.append(g[i])
+				i += 1
+
+		self._randomize_augmentations()
+
+	def _randomize_augmentations(self):
+		self.auglist = augmentation.get_random_augs(self.augcnt)
+		self.auglist.append([augmentation.AUG_NONE])
+		auglist2 = self.auglist.copy()
+		for flipaug in auglist2:
+			self.auglist.append(flipaug + augmentation.AUG_FLIP)
+
+	def get_validation_list(self):
+		return self.validationlist.copy()
+
+	def on_epoch_end(self):
+		self._randomize_augmentations()
+
+	def __len__(self):
+		return int(np.ceil(len(self.filelist * len(self.auglist)) / float(self.batch_size)))
+
+	def __getitem__(self, idx):
+		images = []
+		usercontrols = []
+
+		imgperimg = len(self.auglist)
+
+		i = 0
+		while i < self.batch_size:
+			j = (idx * self.batch_size) + i
+			imgidx = int(floor(float(j) / float(imgperimg)))
+			imgidxstart = imgidx * imgperimg
+			augidx = j - imgidxstart
+			if self.previmgidx != imgidx or self.previmg is None:
+				fpath = self.filelist[imgidx]
+				imgfile = AugmentedImage(fpath, xform=True)
+				self.previmgidx = imgidx
+				self.previmg = imgfile
+			else:
+				imgfile = self.previmg
+			imgfile.reload()
+			imgfile.augment(auglist[augidx])
+			images.append(imgfile.img_cv2)
+			throttle = imgfile.throttle
+			steering = imgfile.steering
+			usercontrols.append((throttle, steering))
+			i += 1
+
+		return np.array(images), np.array(usercontrols)
+
+class ValidationImageSetDataGenerator(keras.utils.Sequence):
+
+	def __init__(self, filelist, batchsize=16):
+		self.filelist = filelist
 		self.batch_size = batchsize
 
 	def __len__(self):
-		return int(np.ceil(len(self.data) / float(self.batch_size)))
+		return int(np.ceil(len(self.filelist) / float(self.batch_size)))
 
 	def __getitem__(self, idx):
-		if self.batch_size > 0:
-			batch_data = self.data[idx * self.batch_size:(idx + 1) * self.batch_size]
+		batch_files = self.filelist[idx * self.batch_size:(idx + 1) * self.batch_size]
 
-			images = []
-			usercontrols = []
-			for data in batch_data:
-				data.load_img_cv2()
-				data.transform()
-				images.append(data.img_cv2)
-				throttle = data.throttle
-				steering = data.steering
-				usercontrols.append((throttle, steering))
+		images = []
+		usercontrols = []
+		for f in batch_files:
+			imgfile = TaggedImage(f)
+			imgfile.load_img_cv2()
+			imgfile.transform()
+			images.append(imgfile.img_cv2)
+			throttle = imgfile.throttle
+			steering = imgfile.steering
+			usercontrols.append((throttle, steering))
 
-			return np.array(images), np.array(usercontrols)
-		else:
-			data = self.data[idx]
-			data.load_img_cv2()
-			data.transform()
-			return (data.img_cv2, (data.throttle, data.steering))
+		return np.array(images), np.array(usercontrols)
