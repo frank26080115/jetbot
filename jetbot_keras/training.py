@@ -5,27 +5,7 @@ from datagenerators import TrainingImageSetDataGenerator, ValidationImageSetData
 
 from clize import run
 
-def get_pilot_by_name(name):
-	name = name.lower()
-	if name == "KerasCategorical".lower():
-		return pilots.KerasCategorical()
-	elif name == "KerasLinear".lower():
-		return pilots.KerasLinear()
-	elif name == "KerasRNN_LSTM".lower():
-		return pilots.KerasRNN_LSTM()
-	elif name == "Keras3D_CNN".lower():
-		return pilots.Keras3D_CNN()
-	elif name == "KerasLatent".lower():
-		return pilots.KerasLatent()
-	elif name == "TensorRTLinear".lower():
-		import pilottensorrt
-		return pilottensorrt.TensorRTLinear()
-	elif name == "TFLitePilot".lower():
-		import tflite
-		return tflite.TFLitePilot()
-	raise ValueError("no such pilot name \"%s\"" % name)
-
-def train(pilot_name, datapath, savepath, *, oldmodelpath="", loadweights="", epochs=100, steps=100, verbose=1, use_early_stop=True, min_delta=.0005, patience=5, validation_every = 5, validation_skip = 3, batchsize=16, augcnt = 3):
+def train(pilot_name, datapath, savepath, *, oldmodelpath="", loadweights="", optimizer="", learning_rate=0.001, learning_rate_decay=0.0, epochs=100, steps=100, verbose=1, use_early_stop=True, min_delta=.0005, patience=5, validation_every = 5, validation_skip = 3, batchsize=16, augcnt = 3):
 	"""Train a neural network model, using a set of images, and saves the resulting model to a file
 
 	:param pilot_name: name of the pilot class, such as KerasLinear, KerasCategorical, KerasLatent, etc
@@ -33,18 +13,21 @@ def train(pilot_name, datapath, savepath, *, oldmodelpath="", loadweights="", ep
 	:param savepath: path to where the Keras model will be saved
 	:param oldmodelpath: optional path to existing Keras model
 	:param loadweights: optional path to existing Keras model, to be loaded via the load_weights function
-	:param epochs: Number of epochs for training
-	:param steps: Total number of steps (batches of samples) to yield from generator before declaring one epoch finished and starting the next epoch
-	:param verbose: Enables/disables verbose output during the training,  0 = silent, 1 = progress bar, 2 = one line per epoch
-	:param use_early_stop: Stop training when val_loss has stopped improving
-	:param min_delta: Minimum change in val_loss to qualify as an improvement, i.e. an absolute change of less than min_delta, will count as no improvement
-	:param patience: Number of epochs with no improvement after which training will be stopped
-	:param validation_every: From the dataset, use every X images for validation instead of training
-	:param validation_skip: Skip X images in the dataset before the very first validation image is extracted from the total dataset
-	:param batchsize: Batch size for training and validation
-	:param augcnt: Number of different augmentations to perform on each training image
+	:param optimizer: name of the optimizer to use on the Keras model
+	:param learning_rate: initial learning rate, only used if optimizer is specified
+	:param learning_rate_decay: learning rate decay over each update, only used if optimizer is specified
+	:param epochs: number of epochs for training
+	:param steps: total number of steps (batches of samples) to yield from generator before declaring one epoch finished and starting the next epoch
+	:param verbose: enables/disables verbose output during the training,  0 = silent, 1 = progress bar, 2 = one line per epoch
+	:param use_early_stop: stop training when val_loss has stopped improving
+	:param min_delta: minimum change in val_loss to qualify as an improvement, i.e. an absolute change of less than min_delta, will count as no improvement
+	:param patience: number of epochs with no improvement after which training will be stopped
+	:param validation_every: from the dataset, use every X images for validation instead of training
+	:param validation_skip: skip X images in the dataset before the very first validation image is extracted from the total dataset
+	:param batchsize: batch size for training and validation
+	:param augcnt: number of different augmentations to perform on each training image
 	"""
-	pilot = get_pilot_by_name(pilot_name)
+	pilot = pilots.get_pilot_by_name(pilot_name)
 
 	datapath = datapath.strip(' ;"')
 	savepath = savepath.strip(' "')
@@ -75,6 +58,11 @@ def train(pilot_name, datapath, savepath, *, oldmodelpath="", loadweights="", ep
 	if loadweights is not None and len(loadweights) > 0:
 		print("Loading existing weights from \"%s\"" % os.path.abspath(loadweights))
 		pilot.load_weights(loadweights)
+
+	if optimizer is not None:
+		if len(optimizer) > 0:
+			pilot.set_optimizer(optimizer, learning_rate, learning_rate_decay)
+			print("Optimizer set to \"%s\" , lr = %f , decay = %f" % (optimizer, learning_rate, learning_rate_decay))
 
 	print("Start Training")
 
