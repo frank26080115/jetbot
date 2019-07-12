@@ -60,25 +60,30 @@ def get_random_augs(num, augcnt = 2, must = [], ignore = [AUG_FLIP, AUG_MOTION_B
 	arr = build_all_possible_augs()
 	arr = arr.copy();
 	cnt = 0
-	while cnt < num and len(arr) > 0:
-		r = random.randint(0, len(arr))
-		x = arr[r]
-		del arr[r]
-		if len(x) >= augcnt:
-			ig = False
-			for ign in ignore:
-				if ign in x:
-					ig = True
-					break
-			if ig == False:
-				gotmust = True
-				for m in must:
-					if m not in x:
-						gotmust = False
+	tries = 500
+	while cnt < num and len(arr) > 0 and tries > 0:
+		try:
+			r = random.randint(0, len(arr))
+			x = arr[r]
+			del arr[r]
+			if len(x) >= augcnt:
+				ig = False
+				for ign in ignore:
+					if ign in x:
+						ig = True
 						break
-				if gotmust:
-					res.append(x)
-					cnt += 1
+				if ig == False:
+					gotmust = True
+					for m in must:
+						if m not in x:
+							gotmust = False
+							break
+					if gotmust:
+						res.append(x)
+						cnt += 1
+		except:
+			pass
+		tries += 1
 	return res
 
 class AugmentedImage(TaggedImage):

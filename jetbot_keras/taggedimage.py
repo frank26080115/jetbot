@@ -102,6 +102,12 @@ class TaggedImage(object):
 		self.img_cv2 = x[:, :, ::-1].copy() # Convert RGB to BGR 
 		return self.img_cv2
 
+	def get_normalized_throttle(self):
+		return float(self.throttle) / 100.0
+
+	def get_normalized_steering(self):
+		return float(self.steering) / 100.0
+
 	def unload_img(self):
 		try:
 			del self.img_cv2

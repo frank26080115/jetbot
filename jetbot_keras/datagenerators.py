@@ -1,4 +1,7 @@
+import os, sys, shutil, glob
+import numpy as np
 from tensorflow.python import keras
+import augmentation
 
 # https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
 class GenericDataGenerator(keras.utils.Sequence):
@@ -87,7 +90,7 @@ class TrainingImageSetDataGenerator(keras.utils.Sequence):
 
 	def _randomize_augmentations(self):
 		self.auglist = augmentation.get_random_augs(self.augcnt)
-		self.auglist.append([augmentation.AUG_NONE])
+		self.auglist.append(augmentation.AUG_NONE)
 		auglist2 = self.auglist.copy()
 		for flipaug in auglist2:
 			self.auglist.append(flipaug + augmentation.AUG_FLIP)
@@ -122,9 +125,9 @@ class TrainingImageSetDataGenerator(keras.utils.Sequence):
 				imgfile = self.previmg
 			imgfile.reload()
 			imgfile.augment(auglist[augidx])
-			images.append(imgfile.img_cv2)
-			throttle = imgfile.throttle
-			steering = imgfile.steering
+			images.append(imgfile.img_cv2.copy())
+			throttle = imgfile.get_normalized_throttle()
+			steering = imgfile.get_normalized_steering()
 			usercontrols.append((throttle, steering))
 			i += 1
 
@@ -148,9 +151,9 @@ class ValidationImageSetDataGenerator(keras.utils.Sequence):
 			imgfile = TaggedImage(f)
 			imgfile.load_img_cv2()
 			imgfile.transform()
-			images.append(imgfile.img_cv2)
-			throttle = imgfile.throttle
-			steering = imgfile.steering
+			images.append(imgfile.img_cv2.copy())
+			throttle = imgfile.get_normalized_throttle()
+			steering = imgfile.get_normalized_steering()
 			usercontrols.append((throttle, steering))
 
 		return np.array(images), np.array(usercontrols)

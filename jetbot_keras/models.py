@@ -248,7 +248,7 @@ def default_latent(num_outputs, input_shape):
 	return model
 
 def convert_keras_model_to_tensorrt(inpath):
-	output_path = Path(inpath + ".uff")
+	output_path = Path(inpath + ".pb")
 	metapath = Path('%s/%s.metadata' % (output_path.parent.as_posix(), output_path.stem))
 
 	tf.keras.backend.clear_session()
