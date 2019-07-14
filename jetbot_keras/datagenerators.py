@@ -104,7 +104,7 @@ class TrainingImageSetDataGenerator(keras.utils.Sequence):
 		self._randomize_augmentations()
 
 	def __len__(self):
-		return int(np.floor(len(self.filelist * len(self.auglist)) / float(self.batch_size)))
+		return int(np.ceil(len(self.filelist * len(self.auglist)) / float(self.batch_size)))
 
 	def __getitem__(self, idx):
 		images = []
@@ -117,6 +117,8 @@ class TrainingImageSetDataGenerator(keras.utils.Sequence):
 		while i < self.batch_size:
 			j = (idx * self.batch_size) + i
 			imgidx = int(np.floor(float(j) / float(imgperimg)))
+			if imgidx >= len(self.filelist):
+				break
 			imgidxstart = imgidx * imgperimg
 			augidx = j - imgidxstart
 			if self.previmgidx != imgidx or self.previmg is None:

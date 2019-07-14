@@ -259,7 +259,9 @@ class KerasLatent(KerasPilot):
 
 def get_pilot_by_name(name):
 	name = name.lower()
-	if name == "KerasCategorical".lower():
+	if name == "KerasPilot".lower():
+		return KerasPilot()
+	elif name == "KerasCategorical".lower():
 		return KerasCategorical()
 	elif name == "KerasLinear".lower():
 		return KerasLinear()
