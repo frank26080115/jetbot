@@ -1,3 +1,4 @@
+import os, errno
 from collections import namedtuple
 from pilots import KerasPilot
 import json
@@ -31,6 +32,15 @@ class TensorRTLinear(KerasPilot):
 
 	def load(self, model_path):
 		uff_model = Path(model_path)
+		frozen_path = Path('%s/%s.pb' % (uff_model.parent.as_posix(), uff_model.stem))
+		if os.path.exists(uff_model) == False or os.path.isfile(uff_model) == False:
+			if os.path.exists(frozen_path) and os.path.isfile(frozen_path):
+				if uffconverter.convert_to_uff(frozen_path):
+					pass
+				else:
+					raise OSError(errno.ENOENT, "UFF file not found and cannot be generated, path: \"%s\"" % model_path, model_path)
+			else:
+				raise OSError(errno.ENOENT, "Frozen graph file not found, needed for conversion to UFF, path: \"%s\"" % frozen_path, frozen_path)
 		metadata_path = Path('%s/%s.metadata' % (uff_model.parent.as_posix(), uff_model.stem))
 		with open(metadata_path.as_posix(), 'r') as metadata, trt.Builder(self.logger) as builder, builder.create_network() as network, trt.UffParser() as parser:
 			metadata = json.loads(metadata.read())
@@ -43,6 +53,7 @@ class TensorRTLinear(KerasPilot):
 
 			for name in output_names:
 				parser.register_output(name)
+
 			# Parse network
 			print('Parsing TensorRT Network')
 			parser.parse(uff_model.as_posix(), network)
