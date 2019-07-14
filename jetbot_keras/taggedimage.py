@@ -21,6 +21,7 @@ class TaggedImage(object):
 	def __init__(self, fpath, whichstick = "auto", flipstick = False):
 		self.img_cv2 = None
 		self.img_pil = None
+		self.hastransformed = False
 		self.whichstick = whichstick
 		self.fpath = fpath
 		self.dpath = os.path.dirname(fpath)
@@ -146,7 +147,7 @@ class TaggedImage(object):
 		if self.hastransformed:
 			return
 
-		self.img_cv2 = cv2.resize(self.img_cv2, (160, 120, 3))
+		self.img_cv2 = cv2.resize(self.img_cv2, (160, 120))
 
 		self.hastransformed = True
 		pass

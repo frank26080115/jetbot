@@ -1,6 +1,8 @@
 import os, sys, shutil, glob
 import numpy as np
+import math, random
 from tensorflow.python import keras
+import taggedimage
 import augmentation
 
 # https://stanford.edu/~shervine/blog/keras-how-to-generate-data-on-the-fly
@@ -102,36 +104,37 @@ class TrainingImageSetDataGenerator(keras.utils.Sequence):
 		self._randomize_augmentations()
 
 	def __len__(self):
-		return int(np.ceil(len(self.filelist * len(self.auglist)) / float(self.batch_size)))
+		return int(np.floor(len(self.filelist * len(self.auglist)) / float(self.batch_size)))
 
 	def __getitem__(self, idx):
 		images = []
-		usercontrols = []
+		throttle = []
+		steering = []
 
 		imgperimg = len(self.auglist)
 
 		i = 0
 		while i < self.batch_size:
 			j = (idx * self.batch_size) + i
-			imgidx = int(floor(float(j) / float(imgperimg)))
+			imgidx = int(np.floor(float(j) / float(imgperimg)))
 			imgidxstart = imgidx * imgperimg
 			augidx = j - imgidxstart
 			if self.previmgidx != imgidx or self.previmg is None:
 				fpath = self.filelist[imgidx]
-				imgfile = AugmentedImage(fpath, xform=True)
+				imgfile = augmentation.AugmentedImage(fpath, xform=True)
 				self.previmgidx = imgidx
 				self.previmg = imgfile
 			else:
 				imgfile = self.previmg
+			#print("%u %u %u %u %u \"%s\"" % (i, j, imgidx, imgidxstart, augidx, imgfile.fname))
 			imgfile.reload()
-			imgfile.augment(auglist[augidx])
+			imgfile.augment(self.auglist[augidx])
 			images.append(imgfile.img_cv2.copy())
-			throttle = imgfile.get_normalized_throttle()
-			steering = imgfile.get_normalized_steering()
-			usercontrols.append((throttle, steering))
+			throttle.append(imgfile.get_normalized_throttle())
+			steering.append(imgfile.get_normalized_steering())
 			i += 1
 
-		return np.array(images), np.array(usercontrols)
+		return np.array(images), (np.array(throttle), np.array(steering))
 
 class ValidationImageSetDataGenerator(keras.utils.Sequence):
 
@@ -146,14 +149,37 @@ class ValidationImageSetDataGenerator(keras.utils.Sequence):
 		batch_files = self.filelist[idx * self.batch_size:(idx + 1) * self.batch_size]
 
 		images = []
-		usercontrols = []
+		throttle = []
+		steering = []
 		for f in batch_files:
-			imgfile = TaggedImage(f)
+			imgfile = taggedimage.TaggedImage(f)
 			imgfile.load_img_cv2()
 			imgfile.transform()
 			images.append(imgfile.img_cv2.copy())
-			throttle = imgfile.get_normalized_throttle()
-			steering = imgfile.get_normalized_steering()
-			usercontrols.append((throttle, steering))
+			throttle.append(imgfile.get_normalized_throttle())
+			steering.append(imgfile.get_normalized_steering())
 
-		return np.array(images), np.array(usercontrols)
+		return np.array(images), (np.array(throttle), np.array(steering))
+
+class RandomImageDataGenerator(keras.utils.Sequence):
+
+	def __init__(self, imgcnt, img_width = 160, img_height = 120, img_depth = 3, batchsize = 16):
+		self.batch_size = batchsize
+		self.img_cnt = imgcnt
+		self.img_width = img_width
+		self.img_height = img_height
+		self.img_depth = img_depth
+
+	def __len__(self):
+		return int(np.ceil(self.img_cnt / float(self.batch_size)))
+
+	def __getitem__(self, idx):
+		images = []
+		throttle = []
+		steering = []
+		while len(images) < self.batch_size:
+			randimage = np.random.randint(255, size=(self.img_height,self.img_width,self.img_depth), dtype=np.uint8)
+			images.append(randimage)
+			throttle.append(random.random())
+			steering.append(random.random() * 2.0 - 1.0)
+		return np.array(images), (np.array(throttle), np.array(steering))

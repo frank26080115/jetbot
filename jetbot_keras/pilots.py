@@ -260,15 +260,15 @@ class KerasLatent(KerasPilot):
 def get_pilot_by_name(name):
 	name = name.lower()
 	if name == "KerasCategorical".lower():
-		return pilots.KerasCategorical()
+		return KerasCategorical()
 	elif name == "KerasLinear".lower():
-		return pilots.KerasLinear()
+		return KerasLinear()
 	elif name == "KerasRNN_LSTM".lower():
-		return pilots.KerasRNN_LSTM()
+		return KerasRNN_LSTM()
 	elif name == "Keras3D_CNN".lower():
-		return pilots.Keras3D_CNN()
+		return Keras3D_CNN()
 	elif name == "KerasLatent".lower():
-		return pilots.KerasLatent()
+		return KerasLatent()
 	elif name == "TensorRTLinear".lower():
 		import pilottensorrt
 		return pilottensorrt.TensorRTLinear()

@@ -222,7 +222,6 @@ class AugmentedImage(TaggedImage):
 		return True
 
 	def noise(self, stddev, nt, mean = 0, y_start = 0, y_end = 0):
-		height, width, channels = self.img_cv2.shape
 		if y_end <= 0:
 			y_end = self.iheight
 		arr = self.img_cv2.copy()
@@ -233,12 +232,13 @@ class AugmentedImage(TaggedImage):
 			cv2.randu(arr, mean, stddev)
 		else:
 			raise Exception("Invalid noise type specified")
-		if y_start == 0 and y_end == height:
+		if y_start == 0 and (y_end >= (self.iheight - 1) or y_end == 0):
 			noisy_img = np.add(self.img_cv2, arr)
 		else:
 			yi = y_start
-			while yi < y_end:
+			while yi < y_end and yi < self.iheigh:
 				noisy_img[yi,:,:] = np.add(self.img_cv2[yi,:,:], arr[yi,:,:])
+				yi += 1
 		return np.clip(noisy_img, 0.0, 255.0)
 
 	def noise_gau(self, stddev = 150):

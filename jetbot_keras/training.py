@@ -1,7 +1,9 @@
 import os, datetime
 import models
 import pilots
-from datagenerators import TrainingImageSetDataGenerator, ValidationImageSetDataGenerator
+from datagenerators import TrainingImageSetDataGenerator, ValidationImageSetDataGenerator, RandomImageDataGenerator
+import tflite
+from pathlib import Path
 
 from clize import run
 
@@ -39,9 +41,15 @@ def train(pilot_name, datapath, savepath, *, oldmodelpath="", loadweights="", op
 	print("Start Loading Data Generators")
 	starttime = datetime.datetime.now()
 
-	train_gen = TrainingImageSetDataGenerator(datapath, validation_every = validation_every, validation_skip = validation_skip, batchsize = batchsize, augcnt = augcnt)
-	validation_data = train_gen.get_validation_list()
-	validation_gen = ValidationImageSetDataGenerator(validation_data, batchsize = batchsize)
+	if datapath.lower().startswith("random;"):
+		randomparamsplit = datapath.split(';')
+		train_gen = RandomImageDataGenerator(int(randomparamsplit[1]))
+		validation_gen = RandomImageDataGenerator(int(randomparamsplit[2]))
+	else: # normal
+		train_gen = TrainingImageSetDataGenerator(datapath, validation_every = validation_every, validation_skip = validation_skip, batchsize = batchsize, augcnt = augcnt)
+		validation_data = train_gen.get_validation_list()
+		validation_gen = ValidationImageSetDataGenerator(validation_data, batchsize = batchsize)
+
 
 	deltatime = datetime.datetime.now() - starttime
 	print("Loading training data files took %u seconds" % int(round(deltatime.total_seconds())))
