@@ -6,6 +6,14 @@ import cv2
 import PIL, PIL.Image
 import mlutils
 
+def parse_usercontrol(str):
+	stickmid = 128
+	y = int(str[0:3]) - 128
+	x = int(str[3:]) - 128
+	ang = axis_vector(x, y)
+	y = -y # stick Y axis is inverted
+	return y, x, ang
+
 def parse_joystick(str):
 	magpart = float(str[0:3])
 	angpart = float(str[3:])
@@ -16,9 +24,18 @@ def polar2usercontrol(m, a):
 	y = m * np.sin(np.radians(a))
 	return x, y
 
+def axis_vector(x, y, maglim = 2.0):
+	y = -y # stick Y axis is inverted
+	mag = math.sqrt((x*x) + (y*y))
+	theta = math.atan2(x, y)
+	ang = math.degrees(theta)
+	if mag > maglim:
+		mag = maglim
+	return mag, ang
+
 class TaggedImage(object):
 
-	def __init__(self, fpath, whichstick = "auto", flipstick = False):
+	def __init__(self, fpath, whichstick = "default", flipstick = False):
 		self.img_cv2 = None
 		self.img_pil = None
 		self.hastransformed = False
@@ -30,11 +47,13 @@ class TaggedImage(object):
 		splitparts = self.tag.split('_')
 		self.time = time.strptime(splitparts[0], "%Y%m%d%H%M%S")
 		self.sequence = int(splitparts[1])
-		self.btns = int("0x" + splitparts[2], 16)
-		self.stickmagnitude_dpad, self.stickangle_dpad   = parse_joystick(splitparts[3])
-		self.stickmagnitude_left, self.stickangle_left   = parse_joystick(splitparts[4])
-		self.stickmagnitude_right, self.stickangle_right = parse_joystick(splitparts[5])
-		if whichstick == "left":
+		self.btns = int("0x" + splitparts[3], 16)
+		self.stickmagnitude_dpad, self.stickangle_dpad   = parse_joystick(splitparts[4])
+		self.stickmagnitude_left, self.stickangle_left   = parse_joystick(splitparts[5])
+		self.stickmagnitude_right, self.stickangle_right = parse_joystick(splitparts[6])
+		if whichstick == "default":
+			self.throttle, self.steering, self.stickangle = parse_usercontrol(splitparts[2])
+		elif whichstick == "left":
 			self.throttle, self.steering = polar2usercontrol(self.stickmagnitude_left, self.stickangle_left)
 			self.stickangle = self.stickangle_left
 		elif whichstick == "right":
@@ -55,7 +74,7 @@ class TaggedImage(object):
 		elif whichstick == "dpad":
 			self.throttle, self.steering = polar2usercontrol(self.stickmagnitude_dpad, self.stickangle_dpad)
 			self.stickangle = self.stickangle_dpad
-		elif whichstick == "max" or whichstick == "auto":
+		elif whichstick == "max":
 			if self.stickmagnitude_dpad >= self.stickmagnitude_left and self.stickmagnitude_dpad >= self.stickmagnitude_right:
 				self.throttle, self.steering = polar2usercontrol(self.stickmagnitude_dpad, self.stickangle_dpad)
 				self.stickangle = self.stickangle_dpad

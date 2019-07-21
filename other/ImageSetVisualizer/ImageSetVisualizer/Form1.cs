@@ -20,6 +20,7 @@ namespace ImageSetVisualizer
     public partial class Form1 : Form
     {
         const int PLOTSPREAD = 100;
+        const int PLOTLIMIT = 140;
 
         List<ImageFile> allFiles = new List<ImageFile>();
 
@@ -60,8 +61,8 @@ namespace ImageSetVisualizer
             throttleAxis.TicklineColor = throttleColour;
             throttleAxis.TitleColor = throttleColour;
             throttleAxis.MinorTicklineColor = throttleColour;
-            throttleAxis.Minimum = -130;
-            throttleAxis.Maximum = 130;
+            throttleAxis.Minimum = -PLOTLIMIT;
+            throttleAxis.Maximum = PLOTLIMIT;
             throttleAxis.MajorTickSize = 20;
             throttleAxis.MinorTickSize = 5;
             throttleAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
@@ -75,8 +76,8 @@ namespace ImageSetVisualizer
             steeringAxis.TicklineColor = steeringColour;
             steeringAxis.TitleColor = steeringColour;
             steeringAxis.MinorTicklineColor = steeringColour;
-            steeringAxis.Minimum = -130;
-            steeringAxis.Maximum = 130;
+            steeringAxis.Minimum = -PLOTLIMIT;
+            steeringAxis.Maximum = PLOTLIMIT;
             steeringAxis.MajorTickSize = 20;
             steeringAxis.MinorTickSize = 5;
             steeringAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
@@ -86,8 +87,8 @@ namespace ImageSetVisualizer
             steeringSeries.Color = steeringColour;
 
             indicatorSeries.Color = OxyColors.Pink;
-            indicatorSeries.Points.Add(new DataPoint(0, -130));
-            indicatorSeries.Points.Add(new DataPoint(0, 130));
+            indicatorSeries.Points.Add(new DataPoint(0, -PLOTLIMIT));
+            indicatorSeries.Points.Add(new DataPoint(0, PLOTLIMIT));
 
             plot.Model.Series.Add(throttleSeries);
             plot.Model.Series.Add(steeringSeries);
@@ -246,21 +247,21 @@ namespace ImageSetVisualizer
             g.DrawLine(new Pen(Color.LightGray), halfWidth + 3, 0, halfWidth + 3, bm.Height);
 
             g.DrawLine(new Pen(Color.Black), 0, halfHeight - f.Throttle, bm.Width, halfHeight - f.Throttle);
-            if (f.Throttle < 128)
+            if (f.Throttle < ImageFile.STICKMIDDLE)
             {
                 g.DrawLine(new Pen(Color.Black), 0, halfHeight - (f.Throttle + 1), bm.Width, halfHeight - (f.Throttle + 1));
             }
-            if (f.Throttle > -128)
+            if (f.Throttle > -ImageFile.STICKMIDDLE)
             {
                 g.DrawLine(new Pen(Color.Black), 0, halfHeight - (f.Throttle - 1), bm.Width, halfHeight - (f.Throttle - 1));
             }
 
             g.DrawLine(new Pen(Color.Black), halfWidth + f.Steering, 0, halfWidth + f.Steering, bm.Height);
-            if (f.Steering < 128)
+            if (f.Steering < ImageFile.STICKMIDDLE)
             {
                 g.DrawLine(new Pen(Color.Black), halfWidth + f.Steering + 1, 0, halfWidth + f.Steering + 1, bm.Height);
             }
-            if (f.Steering > -128)
+            if (f.Steering > -ImageFile.STICKMIDDLE)
             {
                 g.DrawLine(new Pen(Color.Black), halfWidth + f.Steering - 1, 0, halfWidth + f.Steering - 1, bm.Height);
             }
@@ -321,8 +322,8 @@ namespace ImageSetVisualizer
         private void MovePlotIndicator()
         {
             indicatorSeries.Points.Clear();
-            indicatorSeries.Points.Add(new DataPoint(Convert.ToDouble(trkbarPlayback.Value), -130));
-            indicatorSeries.Points.Add(new DataPoint(Convert.ToDouble(trkbarPlayback.Value), 130));
+            indicatorSeries.Points.Add(new DataPoint(Convert.ToDouble(trkbarPlayback.Value), -PLOTLIMIT));
+            indicatorSeries.Points.Add(new DataPoint(Convert.ToDouble(trkbarPlayback.Value), PLOTLIMIT));
         }
 
         private void TrkbarPlayback_KeyDown(object sender, KeyEventArgs e)

@@ -15,7 +15,7 @@ class ImageSet(object):
 			self.images.append(i)
 		self.augumented_images = []
 
-	def load_dir(self, dirpath, whichstick="auto", loadaugs = False):
+	def load_dir(self, dirpath, whichstick="default", loadaugs = False):
 		g = glob.glob(os.path.join(dirpath, "*.jpg"))
 		arr = []
 		for fname in g:

@@ -75,7 +75,7 @@
             this.picboxStick.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
             this.picboxStick.Location = new System.Drawing.Point(658, 12);
             this.picboxStick.Name = "picboxStick";
-            this.picboxStick.Size = new System.Drawing.Size(257, 257);
+            this.picboxStick.Size = new System.Drawing.Size(280, 280);
             this.picboxStick.TabIndex = 3;
             this.picboxStick.TabStop = false;
             this.picboxStick.MouseClick += new System.Windows.Forms.MouseEventHandler(this.PicboxStick_MouseClick);
@@ -86,7 +86,7 @@
             // 
             // btnRename
             // 
-            this.btnRename.Location = new System.Drawing.Point(921, 12);
+            this.btnRename.Location = new System.Drawing.Point(944, 12);
             this.btnRename.Name = "btnRename";
             this.btnRename.Size = new System.Drawing.Size(75, 23);
             this.btnRename.TabIndex = 4;
@@ -97,7 +97,7 @@
             // 
             // btnDelete
             // 
-            this.btnDelete.Location = new System.Drawing.Point(921, 41);
+            this.btnDelete.Location = new System.Drawing.Point(944, 41);
             this.btnDelete.Name = "btnDelete";
             this.btnDelete.Size = new System.Drawing.Size(75, 23);
             this.btnDelete.TabIndex = 4;
@@ -125,7 +125,7 @@
             // lblStickCoords
             // 
             this.lblStickCoords.AutoSize = true;
-            this.lblStickCoords.Location = new System.Drawing.Point(658, 272);
+            this.lblStickCoords.Location = new System.Drawing.Point(658, 295);
             this.lblStickCoords.Name = "lblStickCoords";
             this.lblStickCoords.Size = new System.Drawing.Size(35, 13);
             this.lblStickCoords.TabIndex = 6;

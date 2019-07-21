@@ -156,8 +156,8 @@ def run(remotecontrol=True, cameracapture=False):
 					if remotecontrol:
 						meainingful_input = False # meaningful input means any buttons pressed or the stick has been moved
 						mag_dpad, ang_dpad = axis_vector(axis[DPAD_X], axis[DPAD_Y])
-						mag_left, ang_left = axis_vector(axis_normalize(axis[LEFT_X], curve=0), axis_normalize(axis[LEFT_Y], curve=0))
-						mag_right, ang_right = axis_vector(axis_normalize(axis[RIGHT_X], curve=0), axis_normalize(axis[RIGHT_Y], curve=0))
+						#mag_left, ang_left = axis_vector(axis_normalize(axis[LEFT_X], curve=0), axis_normalize(axis[LEFT_Y], curve=0))
+						#mag_right, ang_right = axis_vector(axis_normalize(axis[RIGHT_X], curve=0), axis_normalize(axis[RIGHT_Y], curve=0))
 						now = datetime.datetime.now()
 						if len(all_btns) > 0 or mag_dpad != 0 or mag_left > 0.1 or mag_right > 0.1:
 							meainingful_input = True
@@ -179,18 +179,19 @@ def run(remotecontrol=True, cameracapture=False):
 							left_speed = 0
 							right_speed = 0
 							ignore_dpad = False
-							ignore_rightstick = True
+							#ignore_rightstick = True
 							if mag_dpad != 0 and ignore_dpad == False:
 								left_speed, right_speed = axis_mix(axis[DPAD_X], axis[DPAD_Y])
 								left_speed /= 4
 								right_speed /= 4
-							elif mag_left > mag_right or ignore_rightstick == True:
-								left_speed, right_speed = axis_mix(axis_normalize(axis[LEFT_X]), axis_normalize(axis[LEFT_Y]))
-								if ignore_rightstick == False:
-									left_speed /= 2
-									right_speed /= 2
+							#elif mag_left > mag_right or ignore_rightstick == True:
+							#	left_speed, right_speed = axis_mix(axis_normalize(axis[LEFT_X]), axis_normalize(axis[LEFT_Y]))
+							#	if ignore_rightstick == False:
+							#		left_speed /= 2
+							#		right_speed /= 2
 							else:
-								left_speed, right_speed = axis_mix(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[RIGHT_Y]))
+							#	left_speed, right_speed = axis_mix(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[RIGHT_Y]))
+							left_speed, right_speed = axis_mix(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[LEFT_Y]))
 							if robot != None:
 								robot.set_motors(left_speed, right_speed)
 							delta_time = now - last_speed_debug_time
@@ -345,6 +346,8 @@ def get_snap_name(initiating_key=None):
 	name = "%04u%02u%02u%02u%02u%02u_%08u" % (now.year, now.month, now.day, now.hour, now.minute, now.second, capidx)
 
 	try:
+		name += "_%03u%03u" % (int(round(axis[LEFT_Y])), int(round(axis[RIGHT_X])))
+
 		name += "_%08X" % keybitmap
 
 		mag, ang = axis_vector(axis[DPAD_X], axis[DPAD_Y])

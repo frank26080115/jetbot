@@ -88,7 +88,7 @@ def get_random_augs(num, augcnt = 2, must = [], ignore = [AUG_FLIP, AUG_MOTION_B
 
 class AugmentedImage(TaggedImage):
 
-	def __init__(self, fpath, whichstick="auto", xform=False):
+	def __init__(self, fpath, whichstick="default", xform=False):
 		TaggedImage.__init__(self, fpath, whichstick)
 		TaggedImage.load_img_cv2(self)
 		if xform:
