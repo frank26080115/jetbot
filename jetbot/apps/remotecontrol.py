@@ -8,6 +8,7 @@ from cv2 import imencode
 
 import time, os, sys, math, datetime, subprocess
 import pwd, grp
+import signal, select
 
 CROSS     = 305
 TRIANGLE  = 307
@@ -32,6 +33,8 @@ L2_ANALOG = "ABS_RX"  # 0 is released
 R2_ANALOG = "ABS_RY"  # 0 is released
 DPAD_X    = "ABS_HAT0X" # -1 is left
 DPAD_Y    = "ABS_HAT0Y" # -1 is up
+NN_STEERING = "NN_STEERING"
+NN_THROTTLE = "NN_THROTTLE"
 
 axis = {
 		"ABS_RZ": 128,
@@ -42,15 +45,19 @@ axis = {
 		"ABS_RY": 128,
 		"ABS_HAT0X": 0,
 		"ABS_HAT0Y": 0,
+		"NN_STEERING": 0,
+		"NN_THROTTLE": 0,
 	}
 
 dualshock = None
 cam = None
 camproc = None
+nnproc = None
 robot = None
 capidx = 0
 continuouscap = False
 continuouscaptime = None
+neuralnet_latched = False
 
 def get_dualshock4():
 	devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
@@ -59,12 +66,13 @@ def get_dualshock4():
 		if dn == "wireless controller":
 			return device
 
-def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
+def gamepad_event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 	global axis
 	global cam
 	global robot
 	global continuouscap
 	global continuouscaptime
+	global neuralnet_latched
 
 	if event.type == ecodes.EV_ABS: 
 		absevent = categorize(event) 
@@ -82,11 +90,13 @@ def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 		if event.value == KeyEvent.key_down:
 			if event.code == TPAD:
 				if is_remotecontrol:
+					neuralnet_latched = False
 					try:
 						robot.motors_makeSafe()
 					except Exception:
 						pass
 					end_cam_proc()
+					end_nn_proc()
 				elif is_cameracapture:
 					pass
 			elif event.code == PSHOME:
@@ -108,6 +118,8 @@ def event_handler(event, is_remotecontrol=True, is_cameracapture=False):
 				elif is_cameracapture:
 					continuouscap = not continuouscap
 					continuouscaptime = datetime.datetime.now()
+			elif event.code == TRIANGLE:
+				neuralnet_latched = False
 		elif event.value == KeyEvent.key_up:
 			pass
 
@@ -117,9 +129,11 @@ def run(remotecontrol=True, cameracapture=False):
 	global axis
 	global continuouscap
 	global continuouscaptime
+	global neuralnet_latched
 
 	prevShutter = False
 	meainingful_input_time = None
+	neuralnet_input_time = None
 	cam_cap_time = None
 	last_speed_debug_time = datetime.datetime.now()
 
@@ -145,21 +159,26 @@ def run(remotecontrol=True, cameracapture=False):
 			print("DualShock4 found, %s" % str(dualshock))
 		else:
 			time.sleep(2)
+
 		while dualshock != None:
 			try:
 				event = dualshock.read_one()
 				if event != None:
-					event_handler(event, is_remotecontrol=remotecontrol, is_cameracapture=cameracapture)
+					gamepad_event_handler(event, is_remotecontrol=remotecontrol, is_cameracapture=cameracapture)
 				else:
 					time.sleep(0)
 					all_btns = dualshock.active_keys()
 					if remotecontrol:
 						meainingful_input = False # meaningful input means any buttons pressed or the stick has been moved
+
+						if TRIANGLE in all_btns:
+							neuralnet_latched = False
+
 						mag_dpad, ang_dpad = axis_vector(axis[DPAD_X], axis[DPAD_Y])
 						#mag_left, ang_left = axis_vector(axis_normalize(axis[LEFT_X], curve=0), axis_normalize(axis[LEFT_Y], curve=0))
 						#mag_right, ang_right = axis_vector(axis_normalize(axis[RIGHT_X], curve=0), axis_normalize(axis[RIGHT_Y], curve=0))
 						now = datetime.datetime.now()
-						if len(all_btns) > 0 or mag_dpad != 0 or mag_left > 0.1 or mag_right > 0.1:
+						if mag_dpad != 0 or mag_left > 0.1 or mag_right > 0.1:
 							meainingful_input = True
 							if meainingful_input_time == None:
 								print("meaningful input!")
@@ -175,12 +194,41 @@ def run(remotecontrol=True, cameracapture=False):
 							else:
 								meainingful_input = True
 
+						use_nn = False
+						if SQUARE in all_btns:
+							neuralnet_latched = True
+						if TRIANGLE in all_btns:
+							neuralnet_latched = False
+						if neuralnet_latched or CROSS in all_btns:
+							use_nn = True
+
+						if meaningful_input == False: # remote control inputs always override neural net inputs
+							while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+								line = sys.stdin.readline()
+								if line:
+									try:
+										axis[NN_THROTTLE] = int(line[0:3])
+										axis[NN_STEERING] = int(line[3:])
+										neuralnet_input_time = now
+									except:
+										pass
+
+						if neuralnet_input_time != None and use_nn:
+							delta_time = now - neuralnet_input_time
+							if delta_time.total_seconds() < 2:
+								meainingful_input = True
+								meainingful_input_time = now
+
 						if meainingful_input:
 							left_speed = 0
 							right_speed = 0
 							ignore_dpad = False
 							#ignore_rightstick = True
-							if mag_dpad != 0 and ignore_dpad == False:
+
+							if use_nn:
+								start_nn_proc() # this will check if process has already started
+								left_speed, right_speed = axis_mix(axis_normalize(axis[NN_STEERING]), axis_normalize(255 - axis[NN_THROTTLE]))
+							elif mag_dpad != 0 and ignore_dpad == False:
 								left_speed, right_speed = axis_mix(axis[DPAD_X], axis[DPAD_Y])
 								left_speed /= 4
 								right_speed /= 4
@@ -191,7 +239,7 @@ def run(remotecontrol=True, cameracapture=False):
 							#		right_speed /= 2
 							else:
 							#	left_speed, right_speed = axis_mix(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[RIGHT_Y]))
-							left_speed, right_speed = axis_mix(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[LEFT_Y]))
+								left_speed, right_speed = axis_mix(axis_normalize(axis[RIGHT_X]), axis_normalize(axis[LEFT_Y]))
 							if robot != None:
 								robot.set_motors(left_speed, right_speed)
 							delta_time = now - last_speed_debug_time
@@ -237,7 +285,7 @@ def run(remotecontrol=True, cameracapture=False):
 									break
 								event = dualshock.read_one()
 								if event != None:
-									event_handler(event, is_remotecontrol=False, is_cameracapture=True)
+									gamepad_event_handler(event, is_remotecontrol=False, is_cameracapture=True)
 
 			except OSError:
 				print("DualShock4 disconnected")
@@ -268,8 +316,9 @@ def axis_normalize(v, curve=2.1, deadzone_inner=8, deadzone_outer=8):
 		return v * m
 
 def axis_mix(x, y):
-	left = -y
-	right = -y
+	y = -y # stick Y axis is inverted
+	left = y
+	right = y
 	left += x
 	right -= x
 	left = min(1.0, max(-1.0, left))
@@ -277,8 +326,9 @@ def axis_mix(x, y):
 	return left, right
 
 def axis_vector(x, y, maglim = 2.0):
+	y = -y # stick Y axis is inverted
 	mag = math.sqrt((x*x) + (y*y))
-	theta = math.atan2(x, -y)
+	theta = math.atan2(x, y)
 	ang = math.degrees(theta)
 	if mag > maglim:
 		mag = maglim
@@ -374,7 +424,7 @@ def start_cam_proc():
 	if camproc != None:
 		return
 	print("starting camera process...", end=" ")
-	camproc = subprocess.Popen(['python3', '/home/jetbot/jetbot/jetbot/apps/remotecamera.py'])
+	camproc = subprocess.Popen(['python3', '/home/jetbot/jetbot/jetbot/apps/remotecamera.py', str(os.getpid())])
 	print(" done!")
 
 def end_cam_proc():
@@ -396,6 +446,26 @@ def set_camera_instance(c):
 def get_camera_instance():
 	global cam
 	return cam
+
+def start_nn_proc():
+	global nnproc
+	if nnproc != None:
+		return
+	print("starting neuralnetwork process...", end=" ")
+	nnproc = subprocess.Popen(['python3', '/home/jetbot/jetbot/jetbot/apps/neuralnetwork.py', str(os.getpid())])
+	print(" done!")
+
+def end_nn_proc():
+	global nnproc
+	if nnproc == None:
+		return
+	try:
+		nnproc.kill()
+		nnproc = None
+	except Exception as ex:
+		sys.stderr.write("Exception while trying to kill neuralnetwork process: " + str(ex))
+	finally:
+		print("ended neuralnetwork process")
 
 if __name__ == '__main__':
 	run()
