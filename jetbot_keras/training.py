@@ -3,6 +3,7 @@ import models
 import pilots
 from datagenerators import TrainingImageSetDataGenerator, ValidationImageSetDataGenerator, RandomImageDataGenerator
 import tflite
+import uffconverter
 from pathlib import Path
 
 from clize import run
@@ -95,11 +96,21 @@ def train(pilot_name, datapath, savepath, *, oldmodelpath="", loadweights="", op
 	except Exception as e:
 		print("Failed to convert to tflite, error: %s" % str(e))
 
+	has_frozen_file = False
 	try:
-		print("Converting to frozen TensorFlow pb file \"%s.pb\"" % savepath)
+		print("Converting to frozen TensorFlow .pb file \"%s.pb\"" % savepath)
 		models.convert_keras_model_to_tensorrt(savepath)
+		has_frozen_file = True
 	except Exception as e:
-		print("Failed to convert to TensorRT uff, error: %s" % str(e))
+		print("Failed to convert to TensorFlow .pb file, error: %s" % str(e))
+
+	if has_frozen_file:
+		try:
+			print("Converting to TensorRT .uff file \"%s.uff\"" % savepath)
+			if uffconverter.convert_to_uff(savepath):
+				pass
+		except Exception as e:
+			print("Failed to convert to TensorRT .uff file, error: %s" % str(e))
 
 	print("All Done!")
 
