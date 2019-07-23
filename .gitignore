@@ -1,2 +1,14 @@
 
 *.pyc
+ALL_BUILD.*
+ALL_BUILD
+ZERO_CHECK.*
+ZERO_CHECK
+ssd_tensorrt.sln
+build/*
+cmake_install.cmake
+cmakecache.txt
+cmakefiles/*
+*/cmakefiles/*
+dist/*
+*.egg-info/*
