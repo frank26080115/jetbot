@@ -123,10 +123,14 @@ class TaggedImage(object):
 		return self.img_cv2
 
 	def get_normalized_throttle(self):
-		return float(self.throttle) / 100.0
+		x = float(self.throttle) / 128.0
+		x = np.clip(x, -1.0, 1.0)
+		return x
 
 	def get_normalized_steering(self):
-		return float(self.steering) / 100.0
+		x = float(self.steering) / 128.0
+		x = np.clip(x, -1.0, 1.0)
+		return x
 
 	def unload_img(self):
 		try:
@@ -153,14 +157,13 @@ class TaggedImage(object):
 		except FileExistsError:
 			pass
 		fp = os.path.join(dirpath, self.fname)
-		with open(fp, 'wb') as f:
-			if self.img_cv2 is None:
-				if self.img_pil is None:
-					pass
-				else:
-					self.img_pil.save(fp, "JPEG")
+		if self.img_cv2 is None:
+			if self.img_pil is None:
+				pass
 			else:
-				cv2.imwrite(fp, self.img_cv2)
+				self.img_pil.save(fp, "JPEG")
+		else:
+			cv2.imwrite(fp, self.img_cv2)
 
 	def transform(self):
 		if self.hastransformed:
