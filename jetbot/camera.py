@@ -5,7 +5,7 @@ import cv2
 from cv2 import VideoCapture, CAP_GSTREAMER
 import threading
 import numpy as np
-from jetbot.utils.undistort import FisheyeUndistorter
+from jetbot.utils.undistort import FisheyeUndistorter, PerspectiveUndistorter
 
 class Camera(SingletonConfigurable):
 
@@ -38,6 +38,7 @@ class Camera(SingletonConfigurable):
         self.crop_y1 = None
         self.crop_x2 = None
         self.crop_y2 = None
+        self.warp = False
 
         try:
             self.cap = VideoCapture(self._gst_str(), CAP_GSTREAMER)
@@ -109,9 +110,22 @@ class Camera(SingletonConfigurable):
                     self.undistort = False
         if self.undistort:
             self.undistorter = FisheyeUndistorter(self.undistort_dim, self.undistort_k, self.undistort_d, bal=self.undistort_balance, dim2=self.undistort_dim2, dim3=self.undistort_dim3)
+            self.warper = None # reset the warper
 
     def disable_undistort(self):
         self.undistort = False
+        self.warper = None # reset the warper
+
+    def enable_warp(self, horizon=0.25, angle=15, vstretch=1.5):
+        self.warp = True
+        self.warp_horizon = horizon
+        self.warp_angle = angle
+        self.warp_vstretch = vstretch
+        self.warper = None
+
+    def disable_warp(self):
+        self.warp = False
+        self.warper = None
 
     def enable_crop(self, x1, y1, x2=None, y2=None, width=None, height=None):
         self.crop_x1 = x1
@@ -139,6 +153,10 @@ class Camera(SingletonConfigurable):
     def post_process_image(self, img):
         if self.undistort and self.undistorter != None:
             img = self.undistorter.undistort_image(img)
+        if self.warp:
+            if self.warper == None:
+                self.warper = PerspectiveUndistorter(img.shape[1], img.shape[0], horizon = self.warp_horizon, angle = self.warp_angle, vstretch = self.warp_vstretch)
+            img = self.warper.undistort_image(img)
         if self.crop_x1 != None and self.crop_y1 != None and self.crop_x2 != None and self.crop_y2 != None:
             img = img[self.crop_y1:self.crop_y2, self.crop_x1:self.crop_x2]
         return img
