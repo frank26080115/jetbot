@@ -99,8 +99,8 @@ class Camera(SingletonConfigurable):
             asp_shouldbe = 3 / 4
             if round(asp_self * 100) == round(asp_shouldbe * 100):
                 self.undistort_dim = (self.width, self.height)
-                self.undistort_k = np.array([[460.70753878093376, 0.0, 505.24222903420747], [0.0, 461.22079408566924, 357.7314598652513], [0.0, 0.0, 1.0]])
-                self.undistort_d = np.array([[-0.016987487065241266], [-0.014653716767538133], [-0.02029760249000433], [0.016954509783374646]])
+                self.undistort_k = np.array([[461.76777548950287, 0.0, 474.354800420152], [0.0, 461.6606215930893, 367.6723298568177], [0.0, 0.0, 1.0]])
+                self.undistort_d = np.array([[-0.042407758362037334], [0.03569968680651657], [-0.05316951772974894], [0.022617628027210103]])
                 self.undistort = True
             else:
                 # allow the caller to load up the required parameters manually
