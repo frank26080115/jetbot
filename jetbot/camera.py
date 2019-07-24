@@ -5,7 +5,7 @@ import cv2
 from cv2 import VideoCapture, CAP_GSTREAMER
 import threading
 import numpy as np
-from jetbot.utils.undistort import FisheyeUndistorter, PerspectiveUndistorter
+from sloth.undistort import FisheyeUndistorter, PerspectiveUndistorter
 
 class Camera(SingletonConfigurable):
 
