@@ -130,12 +130,14 @@ def run(remotecontrol=True, cameracapture=False):
 	global continuouscap
 	global continuouscaptime
 	global neuralnet_latched
+	global nnproc
 
 	prevShutter = False
 	meaningful_input_time = None
 	neuralnet_input_time = None
 	cam_cap_time = None
 	last_speed_debug_time = datetime.datetime.now()
+	last_tick_debug_time = datetime.datetime.now()
 
 	print("Remote Control script running! ", end=" ")
 	if remotecontrol:
@@ -160,7 +162,19 @@ def run(remotecontrol=True, cameracapture=False):
 		else:
 			time.sleep(2)
 
+		now = datetime.datetime.now()
+		delta_time = now - last_tick_debug_time
+		if delta_time.total_seconds() > 5:
+			last_tick_debug_time = now
+			sys.stderr.write("tick %s" % (str(now)))
+
 		while dualshock != None:
+			now = datetime.datetime.now()
+			delta_time = now - last_tick_debug_time
+			if delta_time.total_seconds() > 5:
+				last_tick_debug_time = now
+				sys.stderr.write("tick %s" % (str(now)))
+
 			try:
 				event = dualshock.read_one()
 				if event != None:
@@ -202,7 +216,7 @@ def run(remotecontrol=True, cameracapture=False):
 						if neuralnet_latched or CROSS in all_btns:
 							use_nn = True
 
-						if meaningful_input == False: # remote control inputs always override neural net inputs
+						if meaningful_input == False and nnproc is not None: # remote control inputs always override neural net inputs
 							while sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
 								line = sys.stdin.readline()
 								if line:
@@ -244,6 +258,8 @@ def run(remotecontrol=True, cameracapture=False):
 								robot.set_motors(left_speed, right_speed)
 							delta_time = now - last_speed_debug_time
 							if delta_time.total_seconds() >= 1:
+								if use_nn:
+									print("nn -> ", end="")
 								print("leftmotor: %.2f      rightmotor: %.2f" % (left_speed, right_speed))
 								last_speed_debug_time = now
 					elif cameracapture:
@@ -292,6 +308,8 @@ def run(remotecontrol=True, cameracapture=False):
 				dualshock = None
 				if remotecontrol:
 					end_cam_proc()
+					if robot != None:
+						robot.stop()
 
 def axis_normalize(v, curve=2.1, deadzone_inner=8, deadzone_outer=8):
 	limit = 255

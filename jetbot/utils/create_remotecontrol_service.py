@@ -28,7 +28,7 @@ WantedBy=multi-user.target
 STATS_SERVICE_NAME = 'jetbot_remotecontrol'
 
 
-def get_pwrbtn_service():
+def get_service_text():
     return STATS_SERVICE_TEMPLATE % (os.environ['HOME'], os.environ['HOME'])
 
 
@@ -38,4 +38,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     with open(args.output, 'w') as f:
-        f.write(get_pwrbtn_service())
+        f.write(get_service_text())
