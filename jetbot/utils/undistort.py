@@ -26,7 +26,7 @@ class PerspectiveUndistorter(object):
 	# horizon is a percentage of the vertical resolution
 	# angle is the persepective angle at the edge of the image, relative to a vertical line, 0 means camera is pointed straight down but it is not the camera angle, needs to be calibrated
 	# vstretch is how much to stretch the image vertically
-	def __init__(self, width, height, horizon = 0.25, angle = 15, vstretch = 1.5):
+	def __init__(self, width, height, horizon = 0.0, angle = 45, vstretch = 1.8):
 		self.orig_width = int(width)
 		self.orig_height = int(height)
 		self.horizon = horizon
