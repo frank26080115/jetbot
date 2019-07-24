@@ -25,5 +25,5 @@ setup(
     name='sloth',
     version='0.0.1',
     description='Frank\'s additions to Jetbot',
-    packages=find_packages(),
+    packages=['sloth'],
 )
