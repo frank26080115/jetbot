@@ -160,7 +160,7 @@ while True:
             draw.text((x, top + (lineheight * linecnt)), "DS4: " + DualshockMac, font=font, fill=255)
         elif CameraActive != None:
             draw.text((x, top + (lineheight * linecnt)), CameraActive, font=font, fill=255)
-        elif NeuNetActive != None
+        elif NeuNetActive != None:
             draw.text((x, top + (lineheight * linecnt)), NeuNetActive, font=font, fill=255)
         linecnt += 1
 
