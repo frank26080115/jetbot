@@ -132,7 +132,7 @@ def run(remotecontrol=True, cameracapture=False):
 	global neuralnet_latched
 
 	prevShutter = False
-	meainingful_input_time = None
+	meaningful_input_time = None
 	neuralnet_input_time = None
 	cam_cap_time = None
 	last_speed_debug_time = datetime.datetime.now()
@@ -169,30 +169,30 @@ def run(remotecontrol=True, cameracapture=False):
 					time.sleep(0)
 					all_btns = dualshock.active_keys()
 					if remotecontrol:
-						meainingful_input = False # meaningful input means any buttons pressed or the stick has been moved
+						meaningful_input = False # meaningful input means any buttons pressed or the stick has been moved
 
 						if TRIANGLE in all_btns:
 							neuralnet_latched = False
 
 						mag_dpad, ang_dpad = axis_vector(axis[DPAD_X], axis[DPAD_Y])
-						#mag_left, ang_left = axis_vector(axis_normalize(axis[LEFT_X], curve=0), axis_normalize(axis[LEFT_Y], curve=0))
-						#mag_right, ang_right = axis_vector(axis_normalize(axis[RIGHT_X], curve=0), axis_normalize(axis[RIGHT_Y], curve=0))
+						mag_left, ang_left = axis_vector(axis_normalize(axis[LEFT_X], curve=0), axis_normalize(axis[LEFT_Y], curve=0))
+						mag_right, ang_right = axis_vector(axis_normalize(axis[RIGHT_X], curve=0), axis_normalize(axis[RIGHT_Y], curve=0))
 						now = datetime.datetime.now()
 						if mag_dpad != 0 or mag_left > 0.1 or mag_right > 0.1:
-							meainingful_input = True
-							if meainingful_input_time == None:
+							meaningful_input = True
+							if meaningful_input_time == None:
 								print("meaningful input!")
-							meainingful_input_time = now
-						elif meainingful_input_time != None: # user may have let go, check for timeout
-							delta_time = now - meainingful_input_time
+							meaningful_input_time = now
+						elif meaningful_input_time != None: # user may have let go, check for timeout
+							delta_time = now - meaningful_input_time
 							if delta_time.total_seconds() > 2:
 								print("No meaningful input, stopping robot motors")
-								meainingful_input = False
-								meainingful_input_time = None
+								meaningful_input = False
+								meaningful_input_time = None
 								if robot != None:
 									robot.stop()
 							else:
-								meainingful_input = True
+								meaningful_input = True
 
 						use_nn = False
 						if SQUARE in all_btns:
@@ -216,10 +216,10 @@ def run(remotecontrol=True, cameracapture=False):
 						if neuralnet_input_time != None and use_nn:
 							delta_time = now - neuralnet_input_time
 							if delta_time.total_seconds() < 2:
-								meainingful_input = True
-								meainingful_input_time = now
+								meaningful_input = True
+								meaningful_input_time = now
 
-						if meainingful_input:
+						if meaningful_input:
 							left_speed = 0
 							right_speed = 0
 							ignore_dpad = False
