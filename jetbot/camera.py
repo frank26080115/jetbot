@@ -116,7 +116,7 @@ class Camera(SingletonConfigurable):
         self.undistort = False
         self.warper = None # reset the warper
 
-    def enable_warp(self, horizon=0.25, angle=15, vstretch=1.5):
+    def enable_warp(self, horizon=0.0, angle=45, vstretch=1.8):
         self.warp = True
         self.warp_horizon = horizon
         self.warp_angle = angle
