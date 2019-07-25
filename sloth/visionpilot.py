@@ -224,7 +224,6 @@ class VisionPilot(object):
 			return True
 		return False
 
-
 def get_line_x_for_y(y, m, b):
 	if m == 0:
 		return y

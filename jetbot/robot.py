@@ -28,6 +28,15 @@ class Robot(SingletonConfigurable):
 	def set_motors(self, left_speed, right_speed):
 		self.left_motor.value = left_speed
 		self.right_motor.value = right_speed
+
+		# brake because the momentum is ruining the turn radius
+		if abs(left_speed) >= 0.5 and abs(right_speed) <= 0.2:
+			self.right_motor._motor.setSpeed(0)
+			self.right_motor._motor.run(Adafruit_MotorHAT.BRAKE)
+		elif abs(right_speed) >= 0.5 and abs(left_speed) <= 0.2:
+			self.left_motor._motor.setSpeed(0)
+			self.left_motor._motor.run(Adafruit_MotorHAT.BRAKE)
+
 		# traitlets will check if the value has changed and send the correct commands
 		# but just in case, we handle full-stop explicitly
 		if left_speed == 0 and right_speed == 0:

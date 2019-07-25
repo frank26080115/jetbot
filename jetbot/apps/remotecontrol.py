@@ -243,9 +243,7 @@ def run(remotecontrol=True, cameracapture=False):
 								start_nn_proc() # this will check if process has already started
 								left_speed, right_speed = axis_mix(axis_normalize(axis[NN_STEERING]), axis_normalize(255 - axis[NN_THROTTLE]))
 							elif mag_dpad != 0 and ignore_dpad == False:
-								left_speed, right_speed = axis_mix(axis[DPAD_X], axis[DPAD_Y])
-								left_speed /= 4
-								right_speed /= 4
+								left_speed, right_speed = axis_mix(float(axis[DPAD_X]) / 3.0, axis[DPAD_Y])
 							#elif mag_left > mag_right or ignore_rightstick == True:
 							#	left_speed, right_speed = axis_mix(axis_normalize(axis[LEFT_X]), axis_normalize(axis[LEFT_Y]))
 							#	if ignore_rightstick == False:

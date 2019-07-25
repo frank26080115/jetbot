@@ -47,10 +47,13 @@ class TaggedImage(object):
 		splitparts = self.tag.split('_')
 		self.time = time.strptime(splitparts[0], "%Y%m%d%H%M%S")
 		self.sequence = int(splitparts[1])
-		self.btns = int("0x" + splitparts[3], 16)
-		self.stickmagnitude_dpad, self.stickangle_dpad   = parse_joystick(splitparts[4])
-		self.stickmagnitude_left, self.stickangle_left   = parse_joystick(splitparts[5])
-		self.stickmagnitude_right, self.stickangle_right = parse_joystick(splitparts[6])
+		try:
+			self.btns = int("0x" + splitparts[3], 16)
+			self.stickmagnitude_dpad, self.stickangle_dpad   = parse_joystick(splitparts[4])
+			self.stickmagnitude_left, self.stickangle_left   = parse_joystick(splitparts[5])
+			self.stickmagnitude_right, self.stickangle_right = parse_joystick(splitparts[6])
+		except:
+			pass
 		if whichstick == "default":
 			self.throttle, self.steering, self.stickangle = parse_usercontrol(splitparts[2])
 		elif whichstick == "left":
@@ -146,7 +149,7 @@ class TaggedImage(object):
 		if bit >= 304:
 			bit -= 304
 		bp = 1 << bit
-		if self.btns & bp != 0:
+		if (self.btns & bp) != 0:
 			return True
 		else:
 			return False
@@ -165,11 +168,10 @@ class TaggedImage(object):
 		else:
 			cv2.imwrite(fp, self.img_cv2)
 
-	def transform(self):
+	def transform(self, shape=(160, 120)):
 		if self.hastransformed:
 			return
-
-		self.img_cv2 = cv2.resize(self.img_cv2, (160, 120))
-
+		in_shape = self.img_cv2.shape
+		if in_shape[0] != shape[1] or in_shape[1] != shape[0]:
+			self.img_cv2 = cv2.resize(self.img_cv2, shape)
 		self.hastransformed = True
-		pass
