@@ -21,6 +21,7 @@ AUG_NOISE_TOP_GAU      = "j" #
 AUG_NOISE_TOP_UNI      = "k" # 
 AUG_CONTRAST           = "l" # 
 AUG_CONTRAST_FLATTEN   = "m" # 
+AUG_HUE_SHIFT          = "n" # 
 AUG_NONE               = "0" # 
 
 possible_augs = []
@@ -32,7 +33,7 @@ def build_all_possible_augs():
 		return possible_augs
 
 	i = 0
-	limit = ord(AUG_CONTRAST_FLATTEN[0]) - ord('a')
+	limit = ord(AUG_HUE_SHIFT[0]) - ord('a')
 	bitlimit = (1 << limit) - 1
 	while i <= bitlimit:
 		str = ""
@@ -124,6 +125,8 @@ class AugmentedImage(TaggedImage):
 				self.contrast()
 			elif a == AUG_CONTRAST_FLATTEN:
 				self.contrast_flatten()
+			elif a == AUG_HUE_SHIFT:
+				self.hue_shift()
 			elif a in "1234567890":
 				self.augs += a # do nothing but put in file name
 			i += 1
@@ -273,6 +276,12 @@ class AugmentedImage(TaggedImage):
 		self.img_cv2 = self._contrast(alpha, beta)
 		self.augs += AUG_CONTRAST_FLATTEN
 
+	def hue_shift(self, shift=None):
+		if shift is None:
+			shift = np.random.uniform(5, 175)
+		self.img_cv2 = img_hue_shift(self.img_cv2, shift)
+		self.augs += AUG_HUE_SHIFT
+
 	def save(self):
 		self.save_to(os.path.join(self.dpath, "aug_" + self.augs))
 
@@ -281,3 +290,13 @@ class AugmentedImage(TaggedImage):
 		self.convert_to_pil()
 		self.steering = self.orig_steering
 		self.augs = ""
+
+def img_hue_shift(img, shift):
+	shift = int(round(shift))
+	hsv = cv2.cvtColor(img.copy(), cv2.COLOR_BGR2HSV)
+	hue = hsv[:,:,0]
+	hue_shifted = np.add(hue, shift, dtype=np.uint8)
+	hue_shifted = np.mod(hue_shifted, 180, dtype=np.uint8)
+	hsv[:,:,0] = hue_shifted
+	ret = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+	return ret
