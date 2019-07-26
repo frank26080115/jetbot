@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import undistort
 from undistort import FisheyeUndistorter, PerspectiveUndistorter
+from perftimer import PerfTimer
 from clize import run
 
 class VisionProcessor(object):
@@ -166,6 +167,7 @@ class VisionProcessor(object):
 class VisionPilot(object):
 
 	def __init__(self, ang_hori_thresh = 60, ang_vert_thresh = 15, ang_steer_coeff = 1.5, offset_steer_coeff = 140, dist_throttle_coeff = 0.5, steer_max = 128, throttle_max = 128, savedir=""):
+		self.perftimer = PerfTimer()
 		self.ang_hori_thresh = int(round(ang_hori_thresh))
 		self.ang_vert_thresh = int(round(ang_vert_thresh))
 		self.ang_steer_coeff = float(ang_steer_coeff)
@@ -233,6 +235,7 @@ class VisionPilot(object):
 		steering, throttle = self.process(img_arr)
 		steering /= 127.0
 		throttle /= 127.0
+		self.perftimer.tick()
 		return np.clip(steering, -1.0, 1.0), np.clip(throttle, -1.0, 1.0)
 
 	def save_visualization(self, fpath):
@@ -255,6 +258,9 @@ class VisionPilot(object):
 		fpath = os.path.join(self.save_dir, fname)
 		cv2.imwrite(fpath + ".jpg", self.img)
 		self.save_cnt += 1
+
+	def get_framerate(self):
+		return self.perftimer.get_framerate()
 
 def get_line_x_for_y(y, m, b):
 	if m == 0:

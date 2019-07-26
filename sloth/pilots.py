@@ -24,6 +24,7 @@ from tensorflow.python.keras.layers import Conv3D, MaxPooling3D, Cropping3D, Con
 
 from models import *
 import mlutils
+from perftimer import PerfTimer
 
 
 class KerasPilot(object):
@@ -33,6 +34,7 @@ class KerasPilot(object):
 	def __init__(self):
 		self.model = None
 		self.optimizer = "adam"
+		self.perftimer = PerfTimer()
 
 	def load(self, model_path):
 		self.model = keras.models.load_model(model_path)
@@ -101,6 +103,9 @@ class KerasPilot(object):
 						validation_steps=v_steps)
 		return hist
 
+	def get_framerate():
+		return self.perftimer.get_framerate()
+
 
 class KerasCategorical(KerasPilot):
 	'''
@@ -136,6 +141,7 @@ class KerasCategorical(KerasPilot):
 		N = len(throttle[0])
 		throttle = mlutils.linear_unbin(throttle, N=N, offset=0.0, R=self.throttle_range)
 		angle_unbinned = mlutils.linear_unbin(angle_binned)
+		self.perftimer.tick()
 		return angle_unbinned, throttle
 
 
@@ -160,6 +166,7 @@ class KerasLinear(KerasPilot):
 		outputs = self.model.predict(img_arr)
 		steering = outputs[0]
 		throttle = outputs[1]
+		self.perftimer.tick()
 		return steering[0][0], throttle[0][0]
 
 
@@ -197,6 +204,7 @@ class KerasRNN_LSTM(KerasPilot):
 		outputs = self.model.predict([img_arr])
 		steering = outputs[0][0]
 		throttle = outputs[0][1]
+		self.perftimer.tick()
 		return steering, throttle
 
 
@@ -231,6 +239,7 @@ class Keras3D_CNN(KerasPilot):
 		outputs = self.model.predict([img_arr])
 		steering = outputs[0][0]
 		throttle = outputs[0][1]
+		self.perftimer.tick()
 		return steering, throttle
 
 
@@ -253,6 +262,7 @@ class KerasLatent(KerasPilot):
 		outputs = self.model.predict(img_arr)
 		steering = outputs[1]
 		throttle = outputs[2]
+		self.perftimer.tick()
 		return steering[0][0], throttle[0][0]
 
 
