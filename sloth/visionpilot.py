@@ -1,3 +1,5 @@
+import os
+from datetime import datetime
 import cv2
 import numpy as np
 import undistort
@@ -163,13 +165,21 @@ class VisionProcessor(object):
 
 class VisionPilot(object):
 
-	def __init__(self, ang_thresh = 45, ang_steer_coeff = 0.5, offset_steer_coeff = 128, dist_throttle_coeff = 0.5, steer_max = 128, throttle_max = 128):
+	def __init__(self, ang_thresh = 45, ang_steer_coeff = 0.5, offset_steer_coeff = 128, dist_throttle_coeff = 0.5, steer_max = 128, throttle_max = 128, savedir=""):
 		self.ang_thresh = int(round(ang_thresh))
 		self.ang_steer_coeff = float(ang_steer_coeff)
 		self.offset_steer_coeff = float(offset_steer_coeff)
 		self.dist_throttle_coeff = float(dist_throttle_coeff)
 		self.steer_max = float(steer_max)
 		self.throttle_max = float(throttle_max)
+		self.save_dir = savedir
+		self.save_cnt = 0
+		if self.save_dir is not None:
+			if len(self.save_dir) > 0:
+				try:
+					os.makedirs(self.save_dir)
+				except FileExistsError:
+					pass
 
 	# returns values good for driving directly
 	def process(self, img_arr):
@@ -206,13 +216,18 @@ class VisionPilot(object):
 			py = delta_y / float(self.proc.height)
 			throttle = py * (self.dist_throttle_coeff * float(self.throttle_max))
 
+		self.steering = steering
+		self.throttle = throttle
+
+		self.save_training(img_arr)
+
 		return float(steering), float(throttle)
 
 	# returns values good for neural networks
 	def run(self, img_arr):
 		steering, throttle = self.process(img_arr)
-		steering /= 128.0
-		throttle /= 128.0
+		steering /= 127.0
+		throttle /= 127.0
 		return np.clip(steering, -1.0, 1.0), np.clip(throttle, -1.0, 1.0)
 
 	def save_visualization(self, fpath):
@@ -223,6 +238,18 @@ class VisionPilot(object):
 			cv2.imwrite(fpath, x)
 			return True
 		return False
+
+	def save_training(self, img_arr):
+		if self.save_dir is None:
+			return
+		if len(self.save_dir) <= 0:
+			return
+		now = datetime.now()
+		fname = "%04u%02u%02u%02u%02u%02u_%08u" % (now.year, now.month, now.day, now.hour, now.minute, now.second, self.save_cnt)
+		fname += "_%03u%03u" % (int(round(self.throttle)), int(round(self.steering)))
+		fpath = os.path.join(self.save_dir, fname)
+		cv2.imwrite(fpath + ".jpg", self.img)
+		self.save_cnt += 1
 
 def get_line_x_for_y(y, m, b):
 	if m == 0:
