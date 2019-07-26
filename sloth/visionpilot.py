@@ -254,7 +254,7 @@ class VisionPilot(object):
 			return
 		now = datetime.now()
 		fname = "%04u%02u%02u%02u%02u%02u_%08u" % (now.year, now.month, now.day, now.hour, now.minute, now.second, self.save_cnt)
-		fname += "_%03u%03u" % (int(round(self.throttle)), int(round(self.steering)))
+		fname += "_%03u%03u" % (int(round(self.throttle + 127)), int(round(self.steering + 127)))
 		fpath = os.path.join(self.save_dir, fname)
 		cv2.imwrite(fpath + ".jpg", self.img)
 		self.save_cnt += 1
