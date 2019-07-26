@@ -18,41 +18,41 @@ class VisionProcessor(object):
 		self.failed = False
 
 	def convertToHsv(self):
-		hsv_image = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
-		self.img = hsv_image.copy()
+		self.hsv_image = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
+		self.img = self.hsv_image.copy()
 		self.colorspace = "hsv"
 
 	# try to create a mask around colourful objects, assuming the background is dark grey
 	# can work with all colours, but the hue range should be narrowed down if the colour is known
-	def maskRange(self, color_h_center = 55 / 2, color_h_range = 10, s_min = 32, v_min = 128):
+	def maskRange(self, color_h_center = 55 / 2, color_h_range = 10, s_min = 110, v_min = 32):
 		if self.colorspace == "bgr":
 			self.convertToHsv()
 		if color_h_range > 90: # limit the range
 			color_h_range = 90
 		h_max = color_h_center + color_h_range
 		h_min = color_h_center - color_h_range
-		masked_img = self.img
+		masked_img = self.hsv_image
 		if color_h_range >= 90: # detect any colourful object
 			hsv_min = np.array([0, s_min, v_min])
 			hsv_max = np.array([180, 255, 255])
-			masked_img = cv2.inRange(self.img, hsv_min, hsv_max)
+			masked_img = cv2.inRange(masked_img.copy(), hsv_min, hsv_max)
 		elif h_max <= 180 and h_min >= 0: # normal case
 			hsv_min = np.array([h_min, s_min, v_min])
 			hsv_max = np.array([h_max, 255, 255])
-			masked_img = cv2.inRange(self.img, hsv_min, hsv_max)
+			masked_img = cv2.inRange(masked_img.copy(), hsv_min, hsv_max)
 		elif h_max > 180: # center value just under 180, but coverage is above 180
 			hsv_min = np.array([h_min, s_min, v_min])
 			hsv_max1 = np.array([180, 255, 255])
 			hsv_max2 = np.array([h_max - 180, 255, 255])
-			masked_img1 = cv2.inRange(self.img, hsv_min, hsv_max1)
-			masked_img2 = cv2.inRange(self.img, hsv_min, hsv_max2)
+			masked_img1 = cv2.inRange(masked_img.copy(), hsv_min, hsv_max1)
+			masked_img2 = cv2.inRange(masked_img.copy(), hsv_min, hsv_max2)
 			cv2.bitwise_or(masked_img1, masked_img2, masked_img)
 		elif h_min < 0: # center value just above 0, but coverage is under 0
 			hsv_min1 = np.array([0, s_min, v_min])
 			hsv_min2 = np.array([180 + h_min, s_min, v_min])
 			hsv_max = np.array([h_max, 255, 255])
-			masked_img1 = cv2.inRange(self.img, hsv_min1, hsv_max)
-			masked_img2 = cv2.inRange(self.img, hsv_min2, hsv_max)
+			masked_img1 = cv2.inRange(masked_img.copy(), hsv_min1, hsv_max)
+			masked_img2 = cv2.inRange(masked_img.copy(), hsv_min2, hsv_max)
 			cv2.bitwise_or(masked_img1, masked_img2, masked_img)
 
 		self.img = masked_img.copy() # image is now a mask, a single channel, 0 for false, 255 for true
@@ -165,8 +165,9 @@ class VisionProcessor(object):
 
 class VisionPilot(object):
 
-	def __init__(self, ang_thresh = 45, ang_steer_coeff = 0.5, offset_steer_coeff = 128, dist_throttle_coeff = 0.5, steer_max = 128, throttle_max = 128, savedir=""):
-		self.ang_thresh = int(round(ang_thresh))
+	def __init__(self, ang_hori_thresh = 60, ang_vert_thresh = 15, ang_steer_coeff = 1.5, offset_steer_coeff = 140, dist_throttle_coeff = 0.5, steer_max = 128, throttle_max = 128, savedir=""):
+		self.ang_hori_thresh = int(round(ang_hori_thresh))
+		self.ang_vert_thresh = int(round(ang_vert_thresh))
 		self.ang_steer_coeff = float(ang_steer_coeff)
 		self.offset_steer_coeff = float(offset_steer_coeff)
 		self.dist_throttle_coeff = float(dist_throttle_coeff)
@@ -194,14 +195,18 @@ class VisionPilot(object):
 		m, b = self.proc.get_line_equation()
 		cx, cy = self.proc.get_centroid()
 
-		if angle >= -self.ang_thresh and angle <= self.ang_thresh: # near vertical line
+		if angle >= -self.ang_hori_thresh and angle <= self.ang_hori_thresh: # near vertical line
 			x = get_line_x_for_y(self.proc.height, m, b)
+			x = (x + cx) / 2.0
 			throttle = self.throttle_max
 			mid = float(self.proc.width) / 2.0
 			dx = x - mid
 			px = dx / mid
-			steering = (angle * self.ang_steer_coeff) + (px * self.offset_steer_coeff)
-			if (angle > 0 and steering < 0) or (angle < 0 and steering > 0):
+			ang_component = angle * self.ang_steer_coeff
+			offset_component = px * self.offset_steer_coeff
+			steering = ang_component + offset_component
+			#print("angle %f , ang_co %f , offset_co %f" % (angle, ang_component, offset_component))
+			if ((angle > self.ang_vert_thresh and steering < 0) or (angle < -self.ang_vert_thresh and steering > 0)) and cy < self.proc.height * 0.6:
 				steering = 0
 			if steering > self.steer_max:
 				steering = self.steer_max
