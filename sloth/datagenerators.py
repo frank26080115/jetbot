@@ -61,13 +61,14 @@ class GenericDataGenerator(keras.utils.Sequence):
 
 class TrainingImageSetDataGenerator(keras.utils.Sequence):
 
-	def __init__(self, dirpath, validation_every = 5, validation_skip = 3, batchsize=16, augcnt = 3, use_cielab = False):
+	def __init__(self, dirpath, validation_every = 5, validation_skip = 3, batchsize=16, augcnt = 3, usecielab = False, randomhue = False):
 		self.dirpath = dirpath
 		self.batch_size = batchsize
 		self.augcnt = augcnt
 		self.previmg = None
 		self.previmgidx = -1
-		self.use_cielab = use_cielab
+		self.use_cielab = usecielab
+		self.random_hue = randomhue
 
 		self.filelist = []
 		self.validationlist = []
@@ -132,22 +133,26 @@ class TrainingImageSetDataGenerator(keras.utils.Sequence):
 			#print("%u %u %u %u %u \"%s\"" % (i, j, imgidx, imgidxstart, augidx, imgfile.fname))
 			imgfile.reload()
 			imgfile.augment(self.auglist[augidx])
+			img = imgfile.img_cv2.copy()
+			if self.random_hue:
+				img = augmentation.img_hue_shift(img, np.random.uniform(0, 180))
 			if self.use_cielab:
-				images.append(cv2.cvtColor(imgfile.img_cv2.copy(), cv2.COLOR_BGR2Lab))
-			else:
-				images.append(imgfile.img_cv2.copy())
+				img = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+			img = img.astype('float32') / 255.0
+			images.append(img)
 			throttle.append(imgfile.get_normalized_throttle())
 			steering.append(imgfile.get_normalized_steering())
 			i += 1
 
-		return np.array(images), (np.array(throttle), np.array(steering))
+		return np.array(images), (np.array(steering), np.array(throttle))
 
 class ValidationImageSetDataGenerator(keras.utils.Sequence):
 
-	def __init__(self, filelist, batchsize=16, use_cielab=False):
+	def __init__(self, filelist, batchsize=16, usecielab=False, randomhue=False):
 		self.filelist = filelist
 		self.batch_size = batchsize
-		self.use_cielab = use_cielab
+		self.use_cielab = usecielab
+		self.random_hue = randomhue
 
 	def __len__(self):
 		return int(np.ceil(len(self.filelist) / float(self.batch_size)))
@@ -162,14 +167,17 @@ class ValidationImageSetDataGenerator(keras.utils.Sequence):
 			imgfile = taggedimage.TaggedImage(f)
 			imgfile.load_img_cv2()
 			imgfile.transform()
+			img = imgfile.img_cv2.copy()
+			if self.random_hue:
+				img = augmentation.img_hue_shift(img, np.random.uniform(0, 180))
 			if self.use_cielab:
-				images.append(cv2.cvtColor(imgfile.img_cv2.copy(), cv2.COLOR_BGR2Lab))
-			else:
-				images.append(imgfile.img_cv2.copy())
+				img = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+			img = img.astype('float32') / 255.0
+			images.append(img)
 			throttle.append(imgfile.get_normalized_throttle())
 			steering.append(imgfile.get_normalized_steering())
 
-		return np.array(images), (np.array(throttle), np.array(steering))
+		return np.array(images), (np.array(steering), np.array(throttle))
 
 class RandomImageDataGenerator(keras.utils.Sequence):
 
@@ -192,4 +200,4 @@ class RandomImageDataGenerator(keras.utils.Sequence):
 			images.append(randimage)
 			throttle.append(random.random())
 			steering.append(random.random() * 2.0 - 1.0)
-		return np.array(images), (np.array(throttle), np.array(steering))
+		return np.array(images), (np.array(steering), np.array(throttle))

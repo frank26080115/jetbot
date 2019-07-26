@@ -278,7 +278,7 @@ class AugmentedImage(TaggedImage):
 
 	def hue_shift(self, shift=None):
 		if shift is None:
-			shift = np.random.uniform(5, 175)
+			shift = np.random.uniform(-10, 10)
 		self.img_cv2 = img_hue_shift(self.img_cv2, shift)
 		self.augs += AUG_HUE_SHIFT
 
@@ -292,11 +292,12 @@ class AugmentedImage(TaggedImage):
 		self.augs = ""
 
 def img_hue_shift(img, shift):
-	shift = int(round(shift))
+	shift = int(round(shift)) + 180
 	hsv = cv2.cvtColor(img.copy(), cv2.COLOR_BGR2HSV)
-	hue = hsv[:,:,0]
-	hue_shifted = np.add(hue, shift, dtype=np.uint8)
-	hue_shifted = np.mod(hue_shifted, 180, dtype=np.uint8)
+	hue = hsv[:,:,0].astype('float32')
+	hue_shifted = np.add(hue, shift)
+	hue_shifted = np.round(hue_shifted).astype('uint8')
+	hue_shifted = np.mod(hue_shifted, 180)
 	hsv[:,:,0] = hue_shifted
 	ret = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 	return ret
