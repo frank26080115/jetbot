@@ -350,6 +350,9 @@ def axis_vector(x, y, maglim = 2.0):
 		mag = maglim
 	return mag, ang
 
+def flip_axis(x):
+	return 255 - x
+
 def cam_capture(fn):
 	global cam
 	global capidx
@@ -412,7 +415,7 @@ def get_snap_name(initiating_key=None):
 	name = "%04u%02u%02u%02u%02u%02u_%08u" % (now.year, now.month, now.day, now.hour, now.minute, now.second, capidx)
 
 	try:
-		name += "_%03u%03u" % (int(round(axis_normalize(axis[LEFT_Y]))), int(round(axis_normalize(axis[RIGHT_X]))))
+		name += "_%03u%03u" % (int(round(axis_normalize(flip_axis(axis[LEFT_Y])))), int(round(axis_normalize(axis[RIGHT_X]))))
 
 		name += "_%08X" % keybitmap
 

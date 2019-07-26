@@ -51,10 +51,13 @@ namespace ImageSetVisualizer
             indexAxis.Maximum = 100;
             indexAxis.Zoom(0, 100);
             indexAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
+            //indexAxis.IsZoomEnabled = false;
+            //indexAxis.IsPanEnabled = true;
             plot.Model.Axes.Add(indexAxis);
             LinearAxis throttleAxis = new LinearAxis();
             OxyColor throttleColour = OxyColors.DarkGreen;
             throttleAxis.Title = "Throttle";
+            throttleAxis.Key = throttleAxis.Title;
             throttleAxis.Position = AxisPosition.Left;
             throttleAxis.AxislineColor = throttleColour;
             throttleAxis.TextColor = throttleColour;
@@ -66,10 +69,13 @@ namespace ImageSetVisualizer
             throttleAxis.MajorTickSize = 20;
             throttleAxis.MinorTickSize = 5;
             throttleAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
+            throttleAxis.IsZoomEnabled = false;
+            //throttleAxis.IsPanEnabled = false;
             plot.Model.Axes.Add(throttleAxis);
             LinearAxis steeringAxis = new LinearAxis();
             OxyColor steeringColour = OxyColors.Red;
             steeringAxis.Title = "Steering";
+            steeringAxis.Key = steeringAxis.Title;
             steeringAxis.Position = AxisPosition.Right;
             steeringAxis.AxislineColor = steeringColour;
             steeringAxis.TextColor = steeringColour;
@@ -81,6 +87,8 @@ namespace ImageSetVisualizer
             steeringAxis.MajorTickSize = 20;
             steeringAxis.MinorTickSize = 5;
             steeringAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
+            steeringAxis.IsZoomEnabled = false;
+            //steeringAxis.IsPanEnabled = false;
             plot.Model.Axes.Add(steeringAxis);
 
             throttleSeries.Color = throttleColour;
@@ -89,6 +97,11 @@ namespace ImageSetVisualizer
             indicatorSeries.Color = OxyColors.Pink;
             indicatorSeries.Points.Add(new DataPoint(0, -PLOTLIMIT));
             indicatorSeries.Points.Add(new DataPoint(0, PLOTLIMIT));
+
+            throttleSeries.Title = "Throttle";
+            steeringSeries.Title = "Steering";
+            throttleSeries.YAxisKey = throttleAxis.Key;
+            steeringSeries.YAxisKey = steeringAxis.Key;
 
             plot.Model.Series.Add(throttleSeries);
             plot.Model.Series.Add(steeringSeries);

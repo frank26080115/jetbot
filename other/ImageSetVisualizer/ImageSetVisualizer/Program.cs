@@ -35,7 +35,7 @@ namespace ImageSetVisualizer
         };
 
         public const StickMode STICKMODE = StickMode.Default;
-        public const int STICKMIDDLE = 128;
+        public const int STICKMIDDLE = 127;
 
         private FileInfo child;
 
@@ -88,7 +88,7 @@ namespace ImageSetVisualizer
             string[] parts = fname.Split('_');
             string nname = parts[0] + "_" + parts[1];
 
-            int throttleAbs = (-throttle) + STICKMIDDLE;
+            int throttleAbs = throttle + STICKMIDDLE;
             int steeringAbs = steering + STICKMIDDLE;
             throttleAbs = throttleAbs < 0 ? 0 : (throttleAbs > 255 ? 255 : throttleAbs);
             steeringAbs = steeringAbs < 0 ? 0 : (steeringAbs > 255 ? 255 : steeringAbs);
@@ -138,14 +138,15 @@ namespace ImageSetVisualizer
             {
                 string fname = Path.GetFileNameWithoutExtension(Path.GetFileName(fpath));
                 obj.Name = fname;
-                string[] parts = fname.Split('_');
+                string[] dotparts = fname.Split('.');
+                string[] parts = dotparts[0].Split('_');
 
                 obj.SequenceNumber = Convert.ToInt32(parts[1], 10);
 
                 if (STICKMODE == StickMode.Default)
                 {
                     int left_y, right_x;
-                    if (DecodeThrottleSteering(parts[2], out left_y, out right_x))
+                    if (DecodeThrottleSteering(parts[2], out left_y, out right_x) == false)
                     {
                         return null;
                     }
@@ -246,7 +247,6 @@ namespace ImageSetVisualizer
                 x = Convert.ToInt32(s.Substring(3));
                 y -= STICKMIDDLE;
                 x -= STICKMIDDLE;
-                y = -y;
                 return true;
             }
             catch
