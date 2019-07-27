@@ -31,6 +31,6 @@ def tick():
 	global mine
 	mine.tick()
 
-def get_framerate()
+def get_framerate():
 	global mine
 	return mine.get_framerate()
