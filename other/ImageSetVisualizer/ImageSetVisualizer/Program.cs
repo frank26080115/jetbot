@@ -94,7 +94,11 @@ namespace ImageSetVisualizer
             steeringAbs = steeringAbs < 0 ? 0 : (steeringAbs > 255 ? 255 : steeringAbs);
             nname += string.Format("_{0:000}{1:000}", throttleAbs, steeringAbs);
 
-            nname += "_" + parts[3];
+#if 0
+            if (parts.Length > 3)
+            {
+                nname += "_" + parts[3];
+            }
 
             double mag = Math.Sqrt(Convert.ToDouble((throttle * throttle) + (steering * steering)));
 
@@ -118,6 +122,7 @@ namespace ImageSetVisualizer
             {
                 nname += string.Format("_{0:000}{1:000}", magi, degi);
             }
+#endif
             this.Name = nname;
             string nfpath = Path.Combine(child.DirectoryName, nname + ".jpg");
             child.MoveTo(nfpath);
