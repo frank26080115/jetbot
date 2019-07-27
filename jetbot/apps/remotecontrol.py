@@ -309,7 +309,7 @@ def run(remotecontrol=True, cameracapture=False):
 					if robot != None:
 						robot.stop()
 
-def axis_normalize(v, curve=2.1, deadzone_inner=8, deadzone_outer=8):
+def axis_normalize(v, curve=3.1, deadzone_inner=16, deadzone_outer=16):
 	limit = 255
 	center = limit / 2.0
 	m = 1
