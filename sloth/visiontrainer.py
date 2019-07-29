@@ -3,7 +3,7 @@ from shutil import copyfile
 import undistort
 import cv2
 from undistort import FisheyeUndistorter, PerspectiveUndistorter
-from visionpilot import VisionPilot
+from visionpilot import VisionPilot, get_high_contrast_image
 import augmentation
 from clize import run
 
@@ -55,12 +55,13 @@ class VisionTrainer(object):
 		if self.fisheye is None:
 			self.fisheye = FisheyeUndistorter((img.shape[1], img.shape[0]), undistort.get_fisheye_k(), undistort.get_fisheye_d(), bal = 0.0)
 		img2 = self.fisheye.undistort_image(img)
+		img3 = get_high_contrast_image(img2)
 		if self.warper is None:
 			self.warper = PerspectiveUndistorter(img.shape[1], img.shape[0])
-		img3 = self.warper.undistort_image(img2)
+		img4 = self.warper.undistort_image(img3)
 		if self.pilot is None:
-			self.pilot = VisionPilot()
-		steering, throttle = self.pilot.process(img3)
+			self.pilot = VisionPilot(edge_mask = self.warper.get_warp_edge_mask())
+		steering, throttle = self.pilot.process(img4)
 		steering = int(round(steering + 127))
 		throttle = int(round(throttle + 127))
 		now = datetime.datetime.now()

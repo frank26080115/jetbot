@@ -66,6 +66,14 @@ class PerspectiveUndistorter(object):
 		res = cv2.resize(res, (self.final_width, newheight)) # stretch the image vertically
 		return res
 
+	def get_warp_edge_mask(self):
+		thickness = 5
+		blank = np.zeros((self.orig_height, self.orig_width, 3))
+		rect = cv2.rectangle(blank, (0,-thickness), (self.orig_width, self.orig_height + (2 * thickness)), (255, 255, 255), thickness = thickness)
+		warped = self.undistort_image(rect)
+		(T, bin_img) = cv2.threshold(warped, 32, 255, cv2.THRESH_BINARY_INV)
+		return bin_img[:,:,0]
+
 def get_fisheye_k():
 	return np.array([[461.76777548950287, 0.0, 474.354800420152], [0.0, 461.6606215930893, 367.6723298568177], [0.0, 0.0, 1.0]])
 
