@@ -13,8 +13,6 @@ objp = np.zeros((1, CHECKERBOARD[0]*CHECKERBOARD[1], 3), np.float32)
 objp[0,:,:2] = np.mgrid[0:CHECKERBOARD[0], 0:CHECKERBOARD[1]].T.reshape(-1, 2)
 
 def calibrate(dirpath, width, height):
-	
-
 	_img_shape = None
 	objpoints = [] # 3d point in real world space
 	imgpoints = [] # 2d points in image plane.
