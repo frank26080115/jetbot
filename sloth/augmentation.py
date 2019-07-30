@@ -8,20 +8,21 @@ import pyblur
 import pyblur.LinearMotionBlur
 from pyblur.LinearMotionBlur import LineKernel as LineKernel
 
-AUG_FLIP               = "a" # 0
-AUG_BLUR               = "b" # 1
-AUG_MOTION_BLUR        = "c" # 2
-AUG_CROP_LEFT          = "d" # 3
-AUG_CROP_RIGHT         = "e" # 
-AUG_DIM                = "f" # 
-AUG_BRIGHT             = "g" # 
-AUG_NOISE_GAU          = "h" # 
-AUG_NOISE_UNI          = "i" # 
-AUG_NOISE_TOP_GAU      = "j" # 
-AUG_NOISE_TOP_UNI      = "k" # 
-AUG_CONTRAST           = "l" # 
-AUG_CONTRAST_FLATTEN   = "m" # 
-AUG_HUE_SHIFT          = "n" # 
+AUG_FLIP               = "a" # 
+AUG_BLUR               = "b" # 
+AUG_MOTION_BLUR        = "c" # 
+AUG_CONTRAST_HDR       = "d" # 
+AUG_CROP_LEFT          = "e" # 
+AUG_CROP_RIGHT         = "f" # 
+AUG_DIM                = "g" # 
+AUG_BRIGHT             = "h" # 
+AUG_NOISE_GAU          = "i" # 
+AUG_NOISE_UNI          = "j" # 
+AUG_NOISE_TOP_GAU      = "k" # 
+AUG_NOISE_TOP_UNI      = "l" # 
+AUG_CONTRAST           = "m" # 
+AUG_CONTRAST_FLATTEN   = "n" # 
+AUG_HUE_SHIFT          = "o" # 
 AUG_NONE               = "0" # 
 
 possible_augs = []
@@ -125,6 +126,8 @@ class AugmentedImage(TaggedImage):
 				self.contrast()
 			elif a == AUG_CONTRAST_FLATTEN:
 				self.contrast_flatten()
+			elif a == AUG_CONTRAST_HDR:
+				self.contrast_hdr()
 			elif a == AUG_HUE_SHIFT:
 				self.hue_shift()
 			elif a in "1234567890":
@@ -275,6 +278,27 @@ class AugmentedImage(TaggedImage):
 	def contrast_flatten(self, alpha = 0.8, beta = 0.0):
 		self.img_cv2 = self._contrast(alpha, beta)
 		self.augs += AUG_CONTRAST_FLATTEN
+
+	def contrast_hdr(self):
+		hsv = cv2.cvtColor(self.img_cv2.copy(), cv2.COLOR_BGR2HSV)
+		s_min = np.min(hsv[:,:,1])
+		s_max = np.max(hsv[:,:,1])
+		s_diff = s_max - s_min
+		v_min = np.min(hsv[:,:,2])
+		v_max = np.max(hsv[:,:,2])
+		v_diff = v_max - v_min
+		hsv[:,:,1] = np.subtract(hsv[:,:,1], s_min)
+		hsv[:,:,2] = np.subtract(hsv[:,:,2], v_min)
+		hsv = hsv.astype('float32')
+		hsv[:,:,1] = np.multiply(hsv[:,:,1], float(255.0 / float(s_diff)))
+		hsv[:,:,2] = np.multiply(hsv[:,:,2], float(255.0 / float(v_diff)))
+		hsv[:,:,1] = np.round(hsv[:,:,1])
+		hsv[:,:,2] = np.round(hsv[:,:,2])
+		hsv[:,:,1] = np.clip(hsv[:,:,1], 0.0, 255.0)
+		hsv[:,:,2] = np.clip(hsv[:,:,2], 0.0, 255.0)
+		hsv = hsv.astype('uint8')
+		self.img_cv2 = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+		self.augs += AUG_CONTRAST_HDR
 
 	def hue_shift(self, shift=None):
 		if shift is None:
