@@ -295,7 +295,7 @@ def run(remotecontrol=True, cameracapture=False):
 							while True:
 								now = datetime.datetime.now()
 								cam_frame_timedelta = now - cam_frame_time
-								if cam_frame_timedelta.total_seconds() >= 0.25:
+								if cam_frame_timedelta.total_seconds() >= 0.01:
 									break
 								event = dualshock.read_one()
 								if event != None:
