@@ -5,7 +5,7 @@ import cv2
 from cv2 import VideoCapture, CAP_GSTREAMER
 import threading
 import numpy as np
-from sloth.undistort import FisheyeUndistorter, PerspectiveUndistorter
+from sloth.undistort import FisheyeUndistorter, PerspectiveUndistorter, get_fisheye
 
 class Camera(SingletonConfigurable):
 
@@ -89,25 +89,18 @@ class Camera(SingletonConfigurable):
         self.undistort_balance = balance
         self.undistort_dim2 = dim2
         self.undistort_dim3 = dim3
-        if self.width == self.height:
-            self.undistort_dim = (self.width, self.height)
-            self.undistort_k = np.array([[346.7104965474094, 0.0, 379.81851823551904], [0.0, 462.1778768584941, 355.5060529230117], [0.0, 0.0, 1.0]])
-            self.undistort_d = np.array([[-0.04498282438799088], [0.07821348164549044], [-0.15085637279264702], [0.092845374923209]])
+        # allow the caller to load up the required parameters manually
+        if self.undistort_dim != None and self.undistort_k != None and self.undistort_d != None:
             self.undistort = True
         else:
-            asp_self = self.height / self.width
-            asp_shouldbe = 3 / 4
-            if round(asp_self * 100) == round(asp_shouldbe * 100):
+            fK, fD = get_fisheye(self.width, self.height)
+            if fK is not None and fD is not None:
                 self.undistort_dim = (self.width, self.height)
-                self.undistort_k = np.array([[461.76777548950287, 0.0, 474.354800420152], [0.0, 461.6606215930893, 367.6723298568177], [0.0, 0.0, 1.0]])
-                self.undistort_d = np.array([[-0.042407758362037334], [0.03569968680651657], [-0.05316951772974894], [0.022617628027210103]])
+                self.undistort_k = fK
+                self.undistort_d = fD
                 self.undistort = True
             else:
-                # allow the caller to load up the required parameters manually
-                if self.undistort_dim != None and self.undistort_k != None and self.undistort_d != None:
-                    self.undistort = True
-                else:
-                    self.undistort = False
+                self.undistort = False
         if self.undistort:
             self.undistorter = FisheyeUndistorter(self.undistort_dim, self.undistort_k, self.undistort_d, bal=self.undistort_balance, dim2=self.undistort_dim2, dim3=self.undistort_dim3)
             self.warper = None # reset the warper

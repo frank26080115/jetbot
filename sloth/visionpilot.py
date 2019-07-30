@@ -43,6 +43,9 @@ class VisionProcessor(object):
 		self.img = self.original_img.copy()
 		self.colorspace = "bgr"
 
+	def crushChannel(self, chan, val = 0):
+		self.img[:,:,chan] = np.full((self.height, self.width), int(round(val)), dtype=np.uint8)
+
 	# try to create a mask around colourful objects, assuming the background is dark grey
 	# can work with all colours, but the hue range should be narrowed down if the colour is known
 	# this function can be called repeatedly and the masks will be OR'ed (stacked)
@@ -94,7 +97,7 @@ class VisionProcessor(object):
 		self.colorspace = "mask"
 
 	def cannyEdgeDetect(self, center_val = 127, val_spread = 110, morph_kernel_size = 10, blur = True, blur_kernel_size = 5):
-		if self.colorspace == "hsv" or self.colorspace == "sat":
+		if self.colorspace == "hsv":
 			self.img = cv2.cvtColor(self.img, cv2.COLOR_HSV2BGR)
 		if blur:
 			kernel = np.ones((blur_kernel_size, blur_kernel_size), np.float32) / (blur_kernel_size ** 2)
@@ -102,10 +105,10 @@ class VisionProcessor(object):
 		else:
 			src_img = self.img
 		self.masked_img = cv2.Canny(src_img, center_val - val_spread, center_val + val_spread)
-		kernel = np.ones((morph_kernel_size, morph_kernel_size), np.uint8)
-		self.masked_img = cv2.morphologyEx(self.masked_img, cv2.MORPH_CLOSE, kernel)
 		if self.edge_mask is not None:
 			self.masked_img = np.bitwise_and(self.masked_img, self.edge_mask)
+		kernel = np.ones((morph_kernel_size, morph_kernel_size), np.uint8)
+		self.masked_img = cv2.morphologyEx(self.masked_img, cv2.MORPH_CLOSE, kernel)
 		self.img = self.masked_img.copy()
 		self.colorspace = "edges"
 
@@ -343,7 +346,7 @@ class TapeContour(object):
 		scale = (1.0 - factor) + (factor * (self.cy / float(self.parent.height)))
 		return float(self.area) * scale
 
-	def visualize(self, img, colour=(255, 0, 0), thickness = 3):
+	def visualize(self, img, colour=(255, 0, 0), thickness = 5):
 		box = np.int0(self.box_points)
 		cv2.drawContours(img, [box], 0, colour, thickness)
 
@@ -372,6 +375,7 @@ class VisionPilot(object):
 		self.proc = VisionProcessor(img_arr, edge_mask = self.edge_mask)
 		self.proc.convertToHsv()
 		self.proc.saturateHsv2Rgb()
+		self.proc.crushChannel(0) # removes all blue, for Circuit Launch's carpet
 		self.proc.cannyEdgeDetect()
 		self.proc.maskRange() # finds normal
 		self.proc.maskRange(color_h_range = 90, s_range = (0.0, 255.0 * 0.2), v_range = (255.0 * 0.90, 255.0)) # find white
@@ -483,7 +487,8 @@ def get_high_contrast_image(img_bgr):
 
 def test(img_path):
 	img = cv2.imread(img_path, -1)
-	fisheye = FisheyeUndistorter((img.shape[1], img.shape[0]), undistort.get_fisheye_k(), undistort.get_fisheye_d(), bal = 0.0)
+	fK, fD = undistort.get_fisheye(img.shape[1], img.shape[0])
+	fisheye = FisheyeUndistorter((img.shape[1], img.shape[0]), fK, fD, bal = 0.0)
 	img2 = fisheye.undistort_image(img)
 	img2 = get_high_contrast_image(img2)
 	cv2.imshow("fisheye", img2)
@@ -492,11 +497,14 @@ def test(img_path):
 	cv2.imshow("warp", img3)
 	img = img3
 	edge_mask = warper.get_warp_edge_mask()
+	cv2.imshow("edge_mask", edge_mask)
 
 	proc = VisionProcessor(img, edge_mask = edge_mask)
 	proc.convertToHsv()
 	proc.saturateHsv2Rgb()
 	cv2.imshow("saturated", proc.img)
+	proc.crushChannel(0)
+	cv2.imshow("crushed", proc.img)
 	proc.cannyEdgeDetect()
 	cv2.imshow("canny", proc.img)
 	proc.maskRange()

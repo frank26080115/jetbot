@@ -53,7 +53,8 @@ class VisionTrainer(object):
 		img = cv2.imread(imgfile, -1)
 		orig_img = img.copy()
 		if self.fisheye is None:
-			self.fisheye = FisheyeUndistorter((img.shape[1], img.shape[0]), undistort.get_fisheye_k(), undistort.get_fisheye_d(), bal = 0.0)
+			fK, fD = undistort.get_fisheye(img.shape[1], img.shape[0])
+			self.fisheye = FisheyeUndistorter((img.shape[1], img.shape[0]), fK, fD, bal = 0.0)
 		img2 = self.fisheye.undistort_image(img)
 		img3 = get_high_contrast_image(img2)
 		if self.warper is None:
