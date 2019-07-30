@@ -138,18 +138,20 @@ class VisionProcessor(object):
 		while keep_removing:
 			keep_removing = False
 			i = 0
-			while i < len(self.contours) - 1:
+			while i < len(self.contours) - 1 and keep_removing == False:
 				j = i + 1
-				ci = self.contours[i]
-				cj = self.contours[j]
-				xsect, region = cv2.rotatedRectangleIntersection(ci.min_rect, cj.min_rect)
-				if cv2.INTERSECT_NONE != xsect:
-					if ci.area >= cj.area:
-						del self.contours[j]
-					else:
-						del self.contours[i]
-					keep_removing = True
-					break
+				while j < len(self.contours) and keep_removing == False:
+					ci = self.contours[i]
+					cj = self.contours[j]
+					xsect, region = cv2.rotatedRectangleIntersection(ci.min_rect, cj.min_rect)
+					if cv2.INTERSECT_NONE != xsect:
+						if ci.area >= cj.area:
+							del self.contours[j]
+						else:
+							del self.contours[i]
+						keep_removing = True
+						break
+					j += 1
 				i += 1
 
 		self.sorted_contours = sorted(self.contours, key=self.calcRankedContourArea, reverse=True) # sort to find largest
@@ -161,11 +163,6 @@ class VisionProcessor(object):
 				while len(self.sorted_contours) > limit:
 					del self.sorted_contours[-1]
 			self.contours = self.sorted_contours
-
-		#i = 0
-		#for c in self.sorted_contours:
-		#	print("contour [%u] rect %s %.f" % (i, str(c.min_rect), c.line_angle))
-		#	i += 1
 
 	def calcMeanAngle(self):
 		cnt = 0
@@ -203,39 +200,103 @@ class VisionProcessor(object):
 			cyf = float(c.cy) / float(self.height)
 			if cyf < self.farthest_cy:
 				self.farthest_cy = cyf
-		if add_mid:
-			if len(points_x) > 4:
-				to_add = len(points_x) - 3
-				i = 0
-				while i < to_add:
-					points_x.append(mid_base[0])
-					points_y.append(mid_base[1])
-					i += 1
 
 		points_x = np.array(points_x)
 		points_y = np.array(points_y)
-		self.poly = np.polyfit(points_x, points_y, 1)
-		x0 = 0
-		y0 = self.poly[1]
-		vx = 1.0
-		vy = self.poly[0]
+		self.poly, resi, rank, _, _ = np.polyfit(points_x, points_y, 1, full=True)
+		self.poly2, resi2, rank2, _, _ = np.polyfit(points_y, points_x, 1, full=True) # do it again with x and y swapped, just in case the ordinary way has bad rank (or is vertical)
+		if rank > rank2 and rank != 1:
+			x0 = 0
+			y0 = self.poly[1]
+			vx = 1.0
+			vy = self.poly[0]
+			self.line_vx = vx
+			self.line_vy = vy
+			self.line_x0 = x0
+			self.line_y0 = y0
+			angle = np.arctan2(vx, -vy) # calc angle relative to vertical, positive is clockwise
+			angle = int(round(np.rad2deg(angle)))
+			fit_angle = get_forward_angle(angle)
+		else:
+			x02 = 0
+			y02 = self.poly2[1]
+			vx2 = 1.0
+			vy2 = self.poly2[0]
+			# flip x and y
+			vx = vy2
+			vy = vx2
+			x0 = y02
+			y0 = x02
+			self.line_vx = vx
+			self.line_vy = vy
+			self.line_x0 = x0
+			self.line_y0 = y0
+			angle = np.arctan2(vx2, vy2)
+			angle = int(round(np.rad2deg(angle))) - 90
+			fit_angle = get_forward_angle(angle)
+			if fit_angle < 2 and fit_angle > -2: # vertical-ish line
+				vx = 0
+				self.line_vx = 0
 
-		angle = np.arctan2(vx, -vy) # calc angle relative to vertical, positive is clockwise
-		angle = int(round(np.rad2deg(angle)))
-		fit_angle = get_forward_angle(angle)
+		#print("fit_angle %.1f [%u]   mean_angle %.1f [%u]    p(%.2f , %.2f)" % (fit_angle, len(points_x), mean_angle, mean_angle_cnt, vx, vy))
 
-		#print("fit_angle %.1f    mean_angle %.1f [%u]" % (fit_angle, mean_angle, mean_angle_cnt))
+		# check if the poly fit did a good job
+		good_fit = True
+		if len(self.contours) >= 3:
+			if vx != 0:
+				# check each point against distance to the line
+				m, b = self.get_line_equation()
+				i = 0
+				while i < len(self.contours) and good_fit:
+					ci = self.contours[i]
+					err = abs(b + (m * ci.cx) - ci.cy) / np.sqrt(1 + (m * m))
+					if err > self.height:
+						good_fit = False
+						break
+					i += 1
+			else: # vx is 0 so vertical line
+				i = 0
+				while i < len(self.contours) and good_fit:
+					ci = self.contours[i]
+					err = abs(ci.cx - x0)
+					if err > self.height:
+						good_fit = False
+						break
+					i += 1
+			# check distance between points
+			i = 0
+			while i < len(points_x) - 1 and good_fit:
+				j = i + 1
+				while j < len(points_x) and good_fit:
+					dx = abs(points_x[i] - points_x[j])
+					dy = abs(points_y[i] - points_y[j])
+					dist = np.sqrt((dx * dx) + (dy * dy))
+					if dist > self.height:
+						good_fit = False
+						break
+					j += 1
+				i += 1
 
 		use_fit_angle = False
 		if mean_angle_cnt <= 0:
 			use_fit_angle = True
-		elif mean_angle_cnt == 0 and len(self.contours) >= 3:
+		elif mean_angle_cnt <= 1 and good_fit == True and len(self.contours) >= 3:
 			use_fit_angle = True
+		elif mean_angle_cnt >= 2 and add_mid == False and len(self.contours) <= 2:
+			use_fit_angle = False
 		else:
-			if abs(mean_angle - fit_angle) < 45:
+			if abs(mean_angle - fit_angle) < 45 or good_fit == True:
 				use_fit_angle = True
 
-		if use_fit_angle:
+		if add_mid and len(points_x) == 2 and self.sorted_contours[0].is_narrow:
+			self.line_angle = (fit_angle + mean_angle) / 2.0
+			x0 = float(self.width) / 2.0
+			self.line_x0 = x0
+			y0 = self.height
+			self.line_y0 = y0
+			vx = np.sin(np.deg2rad(self.line_angle))
+			vy = -np.cos(np.deg2rad(self.line_angle))
+		elif use_fit_angle:
 			self.line_angle = fit_angle
 		else:
 			self.line_angle = mean_angle
@@ -247,13 +308,22 @@ class VisionProcessor(object):
 					y0 = c.cy
 					vx = np.sin(np.deg2rad(mean_angle))
 					vy = -np.cos(np.deg2rad(mean_angle))
+					j = i + 1
+					while j < len(self.sorted_contours):
+						c = self.sorted_contours[j]
+						if c.is_narrow:
+							x02 = c.cx
+							y02 = c.cy
+							x0 = (x0 + x02) / 2
+							y0 = (y0 + y02) / 2
+							break
+						j += 1
+					if vx == 0:
+						self.line_vx = 0
+						self.line_x0 = x0
 					break
 				i += 1
 
-		self.line_vx = vx
-		self.line_vy = vy
-		self.line_x0 = x0
-		self.line_y0 = y0
 		if vx > 0 or vx < 0:
 			self.line_lefty = int(round(((-x0) * vy / vx) + y0))
 			self.line_righty = int(round(((self.width - x0) * vy / vx) + y0))
@@ -286,7 +356,7 @@ class VisionProcessor(object):
 			if self.line_vx > 0 or self.line_vx < 0:
 				cv2.line(hsv_img, (self.width - 1, self.line_righty), (0, self.line_lefty), (hue, 255, 255), line_thickness)
 			else:
-				cv2.line(hsv_img, (self.line_x0, 0), (self.line_x0, self.height - 1), (hue, 255, 255), line_thickness)
+				cv2.line(hsv_img, (int(round(self.line_x0)), 0), (int(round(self.line_x0)), self.height - 1), (hue, 255, 255), line_thickness)
 		except:
 			pass
 		return cv2.cvtColor(hsv_img.copy(), cv2.COLOR_HSV2BGR)
@@ -299,6 +369,8 @@ class VisionProcessor(object):
 	def get_line_equation(self):
 		if self.failed:
 			return 0, 0
+		if self.line_vx == 0:
+			return float("inf"), float("inf")
 		m = float(self.line_vy) / float(self.line_vx)
 		b = float(self.line_y0) - (m * float(self.line_x0))
 		return m, b
@@ -371,15 +443,17 @@ class VisionPilot(object):
 					pass
 
 	# returns values good for driving directly
-	def process(self, img_arr):
+	def process(self, img_arr, fname=None):
 		self.proc = VisionProcessor(img_arr, edge_mask = self.edge_mask)
 		self.proc.convertToHsv()
 		self.proc.saturateHsv2Rgb()
 		self.proc.crushChannel(0) # removes all blue, for Circuit Launch's carpet
 		self.proc.cannyEdgeDetect()
 		self.proc.maskRange() # finds normal
-		self.proc.maskRange(color_h_range = 90, s_range = (0.0, 255.0 * 0.2), v_range = (255.0 * 0.90, 255.0)) # find white
 		self.proc.findContours()
+		if len(self.proc.contours) <= 0:
+			self.proc.maskRange(color_h_range = 90, s_range = (0.0, 255.0 * 0.2), v_range = (255.0 * 0.90, 255.0)) # find white
+			self.proc.findContours()
 		self.proc.calcBestFit()
 
 		if self.proc.failed:
@@ -409,7 +483,7 @@ class VisionPilot(object):
 		self.throttle = throttle
 		self.last_steering = steering
 
-		self.save_training(img_arr)
+		self.save_training(img_arr, fname = fname)
 
 		return float(steering), float(throttle)
 
@@ -430,13 +504,18 @@ class VisionPilot(object):
 			return True
 		return False
 
-	def save_training(self, img_arr):
+	def save_training(self, img_arr, fname=None):
 		if self.save_dir is None:
 			return
 		if len(self.save_dir) <= 0:
 			return
-		now = datetime.now()
-		fname = "%04u%02u%02u%02u%02u%02u_%08u" % (now.year, now.month, now.day, now.hour, now.minute, now.second, self.save_cnt)
+		if fname is None:
+			now = datetime.now()
+			fname = "%04u%02u%02u%02u%02u%02u_%08u" % (now.year, now.month, now.day, now.hour, now.minute, now.second, self.save_cnt)
+		else:
+			filename_w_ext = os.path.basename(fname)
+			filename, file_extension = os.path.splitext(filename_w_ext)
+			fname = filename[0:(4 + 2 + 2 + 2 + 2 + 2 + 1 + 8)]
 		fname += "_%03u%03u" % (int(round(self.throttle + 127)), int(round(self.steering + 127)))
 		fpath = os.path.join(self.save_dir, fname)
 		cv2.imwrite(fpath + ".jpg", self.img)

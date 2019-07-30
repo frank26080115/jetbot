@@ -65,9 +65,12 @@ class VisionTrainer(object):
 		steering, throttle = self.pilot.process(img4)
 		steering = int(round(steering + 127))
 		throttle = int(round(throttle + 127))
-		now = datetime.datetime.now()
-		fname = "%04u%02u%02u%02u%02u%02u_%08u" % (now.year, now.month, now.day, now.hour, now.minute, now.second, self.seqnum)
-		self.seqnum += 1
+		#now = datetime.datetime.now()
+		#fname = "%04u%02u%02u%02u%02u%02u_%08u" % (now.year, now.month, now.day, now.hour, now.minute, now.second, self.seqnum)
+		#self.seqnum += 1
+		filename_w_ext = os.path.basename(imgfile)
+		filename, file_extension = os.path.splitext(filename_w_ext)
+		fname = filename[0:(4 + 2 + 2 + 2 + 2 + 2 + 1 + 8)]
 		fname += "_%03u%03u" % (throttle, steering)
 		fpath = os.path.join(self.outpath_now, fname)
 		if self.save_preview:
