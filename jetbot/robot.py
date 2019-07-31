@@ -13,8 +13,8 @@ class Robot(SingletonConfigurable):
 	right_motor_alpha = traitlets.Float(default_value=1.0).tag(config=True)
 	brake_speed = traitlets.Integer(default_value=255).tag(config=True)
 
-	CONST_FORWARD   = Adafruit_MotorHAT.BACKWARD
-	CONST_BACKWARD  = Adafruit_MotorHAT.FORWARD
+	CONST_FORWARD   = Adafruit_MotorHAT.FORWARD
+	CONST_BACKWARD  = Adafruit_MotorHAT.BACKWARD
 	CONST_BRAKE     = Adafruit_MotorHAT.RELEASE
 	CONST_RELEASE   = Adafruit_MotorHAT.BRAKE
 
@@ -70,7 +70,7 @@ class Robot(SingletonConfigurable):
 				self.right_motor.run(self.CONST_BRAKE)
 			else:
 				timedelta = now - self.braketime
-				if timedelta.total_seconds() > 2:
+				if timedelta.total_seconds() > 5:
 					self.left_motor.setSpeed(0)
 					self.right_motor.setSpeed(0)
 					self.left_motor.run(self.CONST_RELEASE)

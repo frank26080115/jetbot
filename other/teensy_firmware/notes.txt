@@ -1,0 +1,27 @@
+The firmware for the actual Jetson Nano is not here, since all that code is a fork of the Nvidia official Jetbot github repo
+
+The contents of this directory is an Arduino sketchbook meant for the Teensy firmware that emulates the Adafruit PWM driver
+
+This allows me to use much more powerful motor drivers, and extended it to add ADC capabilities and other features
+
+
+
+Wiring of the Adafruit DC Motor FeatherWing
+
+M1 = RIGHT MOTOR
+PWM 8 = Right Motor ENABLE
+PWM 9 = Right Motor IN2
+PWM 10 = Right Motor IN1
+
+M2 = LEFT MOTOR
+PWM 13 = Left Motor ENABLE
+PWM 12 = Left Motor IN2
+PWM 11 = Left Motor IN1
+
+PWM 7 = M4 ENABLE
+PWM 6 = M4 IN2
+PWM 5 = M4 IN1
+
+PWM 2 = M3 ENABLE
+PWM 3 = M3 IN2
+PWM 4 = M3 IN1

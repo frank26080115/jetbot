@@ -229,7 +229,7 @@ def run(remotecontrol=True, cameracapture=False):
 
 						if neuralnet_input_time != None and use_nn:
 							delta_time = now - neuralnet_input_time
-							if delta_time.total_seconds() < 2:
+							if delta_time.total_seconds() < 5:
 								meaningful_input = True
 								meaningful_input_time = now
 
@@ -309,7 +309,7 @@ def run(remotecontrol=True, cameracapture=False):
 					if robot != None:
 						robot.stop()
 
-def axis_normalize(v, curve=3.1, deadzone_inner=16, deadzone_outer=16):
+def axis_normalize(v, curve=1.8, deadzone_inner=16, deadzone_outer=16):
 	limit = 255
 	center = limit / 2.0
 	m = 1
