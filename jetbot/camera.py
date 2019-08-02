@@ -17,7 +17,9 @@ class Camera(SingletonConfigurable):
     fps = traitlets.Integer(default_value=21).tag(config=True)
     capture_width = traitlets.Integer(default_value=3280).tag(config=True)
     capture_height = traitlets.Integer(default_value=2464).tag(config=True)
+    argusmode = traitlets.Integer(default_value=-1).tag(config=True)
     flipmode = traitlets.Integer(default_value=0).tag(config=True)
+    autostart = traitlets.Bool(default_value=True).tag(config=True)
     extraconfig = traitlets.Unicode(default_value="").tag(config=True)
 
     def __init__(self, *args, **kwargs):
@@ -40,6 +42,15 @@ class Camera(SingletonConfigurable):
         self.crop_y2 = None
         self.warp = False
 
+        if self.argusmode >= 0:
+            vw, vh, vf = self._get_argus_mode(self.argusmode)
+            self.capture_width = vw
+            self.capture_height = vh
+            self.fps = vf
+        if self.width == 0 or self.height == 0:
+            self.width = self.capture_width
+            self.height = self.capture_height
+
         try:
             self.cap = VideoCapture(self._gst_str(), CAP_GSTREAMER)
 
@@ -49,7 +60,8 @@ class Camera(SingletonConfigurable):
                 raise RuntimeError('Could not read image from camera.')
 
             self.value = image
-            self.start()
+            if self.autostart:
+                self.start()
         except:
             self.stop()
             raise RuntimeError('Could not initialize camera.  Please see error trace.')
@@ -67,6 +79,18 @@ class Camera(SingletonConfigurable):
     def _gst_str(self):
         return 'nvarguscamerasrc %s ! video/x-raw(memory:NVMM), width=%d, height=%d, format=(string)NV12, framerate=(fraction)%d/1 ! nvvidconv flip-method=%d ! video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! videoconvert ! appsink' % (
                 self.extraconfig, self.capture_width, self.capture_height, self.fps, self.flipmode, self.width, self.height)
+
+    def _get_argus_mode(self, mode):
+        if mode == 0:
+            return 3280, 2464, 21
+        elif mode == 1:
+            return 3280, 1848, 28
+        elif mode == 2:
+            return 1920, 1080, 30
+        elif mode == 3:
+            return 1280, 720, 60
+        elif mode == 4:
+            return 1280, 720, 120
 
     def start(self):
         if not self.cap.isOpened():

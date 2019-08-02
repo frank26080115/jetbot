@@ -76,15 +76,45 @@ class PerspectiveUndistorter(object):
 		(T, bin_img) = cv2.threshold(morphed, 32, 255, cv2.THRESH_BINARY_INV)
 		return bin_img[:,:,0]
 
-def get_fisheye(w, h):
-	# default array used for 960x720 sized images
-	K = np.array([[461.7677813956804, 0.0, 474.3547962904648], [0.0, 461.66062750808965, 367.67234166766383], [0.0, 0.0, 1.0]])
-	D = np.array([[-0.04240781305741471], [0.03569991906059936], [-0.053169853982769216], [0.02261778256931271]])
+def get_fisheye(w, h, mode = 0):
+	aspect_ratio_in = int(round(float(w) / float(h)) * 100)
+	aspect_ratio_tolerance = 3
 
-	if w == 960 and h == 720:
+	DIM=(3280, 2464)
+	aspect_ratio_check = int(round(float(DIM[0]) / float(DIM[1])) * 100)
+	if aspect_ratio_check < aspect_ratio_in + aspect_ratio_tolerance and aspect_ratio_check > aspect_ratio_in - aspect_ratio_tolerance
+		K=np.array([[1575.7203514109985, 0.0, 1634.414876706553], [0.0, 1578.292053875012, 1248.0302449939218], [0.0, 0.0, 1.0]])
+		D=np.array([[-0.03179567051238011], [0.0025396904463175865], [-0.01724321137242627], [0.010624139597568343]])
+		DIMOUT = DIM
+
+	if mode == 1:
+		DIM=(3280, 1848)
+		aspect_ratio_check = int(round(float(DIM[0]) / float(DIM[1])) * 100)
+		if aspect_ratio_check < aspect_ratio_in + aspect_ratio_tolerance and aspect_ratio_check > aspect_ratio_in - aspect_ratio_tolerance
+			K=np.array([[1576.5137904246637, 0.0, 1642.499136508477], [0.0, 1576.3656256414863, 938.6022935744061], [0.0, 0.0, 1.0]])
+			D=np.array([[-0.08510305029865232], [0.3326202942693721], [-0.7967822293200877], [0.6391687925881504]])
+			DIMOUT = DIM
+
+	if mode == 2:
+		DIM=(1920, 1080)
+		aspect_ratio_check = int(round(float(DIM[0]) / float(DIM[1])) * 100)
+		if aspect_ratio_check < aspect_ratio_in + aspect_ratio_tolerance and aspect_ratio_check > aspect_ratio_in - aspect_ratio_tolerance
+			K=np.array([[1581.6707532208197, 0.0, 984.2015555479232], [0.0, 1579.9935594740775, 553.3407862615908], [0.0, 0.0, 1.0]])
+			D=np.array([[-0.08639411773309018], [0.11960309535080282], [0.6256429555549071], [-0.33836481413436487]])
+			DIMOUT = DIM
+
+	if mode <= 0 or mode >= 3:
+		DIM=(1280, 720)
+		aspect_ratio_check = int(round(float(DIM[0]) / float(DIM[1])) * 100)
+		if aspect_ratio_check < aspect_ratio_in + aspect_ratio_tolerance and aspect_ratio_check > aspect_ratio_in - aspect_ratio_tolerance
+			K=np.array([[787.3825331285426, 0.0, 659.4848969002352], [0.0, 787.9410368774925, 361.8520484544348], [0.0, 0.0, 1.0]])
+			D=np.array([[-0.05605717972439883], [0.10390638162590304], [-0.238804974772405], [0.28898005951128075]])
+			DIMOUT = DIM
+
+	if w == DIMOUT[0] and h == DIMOUT[1]:
 		return K, D
 
-	r = float(h) / 720.0
+	r = float(h) / float(DIMOUT[1])
 	K[0] = np.multiply(K[0], r)
 	K[1] = np.multiply(K[1], r)
 
